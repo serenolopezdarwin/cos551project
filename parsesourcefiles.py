@@ -17,7 +17,8 @@ def generate_exp_matrix(exp_data_path, sparse_mat_path):
     start = perf_counter()
     with open(exp_data_path) as exp_data_in:
         # Skips header lines
-        exp_data_in.seek(2)
+        for _ in range(2):
+            next(exp_data_in)
         # The three sublists correspond to gene ids, cell ids, and expression levels.
         sparse_mat = [[], [], []]
         for exp_data in exp_data_in:
@@ -81,8 +82,7 @@ def process_cell_data(cell_annotation_path, exp_mat, cell_data_path, filtered_ma
     cell_data_dict = {}
     with open(cell_annotation_path, 'rt') as cell_annotations_in:
         # Skips header
-        cell_annotations_in.seek(1)
-        cell_reader = csv.reader(cell_annotations_in)
+        cell_reader = csv.reader(cell_annotations_in)[1:]
         row_num = 0
         for cell_row in cell_reader:
             # Iterate first because cells are 1-indexed
@@ -138,8 +138,7 @@ def generate_gene_dict(gene_annotation_path, filt_exp_mat, gene_data_path, doubl
     gene_data_dict = {}
     with open(gene_annotation_path, 'rt') as gene_annotations_in:
         # Skips header
-        gene_annotations_in.seek(1)
-        gene_reader = csv.reader(gene_annotations_in)
+        gene_reader = csv.reader(gene_annotations_in)[1:]
         row_num = 0
         for gene_row in gene_reader:
             # Iterate first because genes are 1-indexed
