@@ -81,8 +81,9 @@ def process_cell_data(cell_annotation_path, exp_mat, cell_data_path, filtered_ma
     cell_exp_levels, exp_by_cells = aggregate_expression_level("cells", exp_mat)
     cell_data_dict = {}
     with open(cell_annotation_path, 'rt') as cell_annotations_in:
-        # Skips header
         cell_reader = csv.reader(cell_annotations_in)
+        # Skips header
+        next(cell_reader)
         row_num = 0
         for cell_row in cell_reader[1:]:
             # Iterate first because cells are 1-indexed
@@ -137,10 +138,11 @@ def generate_gene_dict(gene_annotation_path, filt_exp_mat, gene_data_path, doubl
     gene_exp_levels, exp_by_genes = aggregate_expression_level("genes", filt_exp_mat)
     gene_data_dict = {}
     with open(gene_annotation_path, 'rt') as gene_annotations_in:
-        # Skips header
         gene_reader = csv.reader(gene_annotations_in)
+        # Skips header
+        next(gene_reader)
         row_num = 0
-        for gene_row in gene_reader[1:]:
+        for gene_row in gene_reader:
             # Iterate first because genes are 1-indexed
             row_num += 1
             gene_name = gene_row[2]
