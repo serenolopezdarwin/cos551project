@@ -85,7 +85,7 @@ def process_cell_data(cell_annotation_path, exp_mat, cell_data_path, filtered_ma
         # Skips header
         next(cell_reader)
         row_num = 0
-        for cell_row in cell_reader[1:]:
+        for cell_row in cell_reader:
             # Iterate first because cells are 1-indexed
             row_num += 1
             exp_level = cell_exp_levels[row_num]
@@ -188,6 +188,7 @@ def main():
     """Manager function. Checks if a variety of files exist, and if they don't, generates them. Details of each called
     function are in the corresponding docstrings."""
     # Creates any missing data directories for us.
+    log("Log initialized...")
     data_directories = ["sourcefiles", "intermediates"]
     for directory in data_directories:
         if not os.path.isdir(directory):
