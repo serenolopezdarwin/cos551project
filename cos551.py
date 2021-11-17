@@ -3,6 +3,7 @@ This script acts as a custom module to define helpful class types and functions 
 Specifics of those class types and functions found in the corresponding docstrings.
 """
 # Imports
+from datetime import datetime
 import os
 import sys
 
@@ -14,7 +15,8 @@ def log(text, calls=[0]):
     head_script = sys.argv[0]
     if not os.path.exists("logs"):
         os.mkdir("logs")
-    logfile = f"logs/{head_script.replace('.py', '.log')}"
+    now = datetime.now()
+    logfile = f"logs/{head_script.replace('.py', '_')}{now.strftime('%m%d%y_%H%M')}.log"
     if calls[0]:
         log_out = open(logfile, 'a')
     else:
