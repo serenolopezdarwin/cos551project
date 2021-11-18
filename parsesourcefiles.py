@@ -31,7 +31,7 @@ def generate_exp_matrix(exp_data_path: str, sparse_mat_path: str):
     return sparse_mat
 
 
-def aggregate_expression_level(by: str, exp_mat: list):
+def aggregate_expression_level(by: str, exp_mat: list, sorted_exp_mat_path: str):
     """Given a dimension and an expression matrix, aggregates the expression level along each dimension, like doing the
     row or column sums of a non-sparse matrix. Returns the sums indexed by dimension ids (not indices, since dimensions
     are 1-indexed while indices are 0-indexed due to python's basic rules). Also returns the sorted zip object so that
@@ -45,10 +45,17 @@ def aggregate_expression_level(by: str, exp_mat: list):
         other_idx = 0
     else:
         raise KeyError("Incorrect 'by' argument passed to aggregation function")
-    id_list = exp_mat[slice_idx]
-    unprocessed_list = exp_mat[other_idx]
-    exp_list = exp_mat[2]
-    exp_mat_sort = sorted(zip(id_list, exp_list, unprocessed_list))
+    # Avoids sorting bottleneck, and lets us verify our chunking method more easily.
+    if os.path.exists(sorted_exp_mat_path):
+        with open(sorted_exp_mat_path, 'rb') as sorted_exp_mat_in:
+            exp_mat_sort = pkl.load(sorted_exp_mat_in)
+    else:
+        id_list = exp_mat[slice_idx]
+        unprocessed_list = exp_mat[other_idx]
+        exp_list = exp_mat[2]
+        exp_mat_sort = sorted(zip(id_list, exp_list, unprocessed_list))
+        with open(sorted_exp_mat_path, 'wb') as sorted_exp_mat_out:
+            pkl.dump(exp_mat_sort, sorted_exp_mat_out)
     # The exp_mat_sort call finds the max of id_list without having to iterate over the list again. Adds one because
     # Anything we initialize with it is 1-indexed.
     max_idx = exp_mat_sort[-1][0] + 1
@@ -78,7 +85,20 @@ def process_cell_data(cell_annotation_path: str, exp_mat: list, cell_data_path: 
     expression matrix, sorts it by cell ids, and calculates each cell's aggregate expression level. Then flags cells for
     removal from the dataset based on their overall expression levels or doublet membership."""
     start = perf_counter()
-    cell_exp_levels, exp_by_cells = aggregate_expression_level("cells", exp_mat)
+    chunked_exp_mat_path = "intermediates/exp_mat_chunk_cells.pkl"
+    # Avoids chunking bottleneck, and lets us verify our sorting method more easily.
+    if os.path.exists(chunked_exp_mat_path):
+        with open(chunked_exp_mat_path, 'rb') as chunked_exp_mat_in:
+            exp_by_cells = pkl.load(chunked_exp_mat_in)
+            cell_exp_levels = []
+            for cell_data in exp_by_cells:
+                cell_exp = sum([entry[1] for entry in cell_data])
+                cell_exp_levels.append(cell_exp)
+    else:
+        sort_exp_mat_path = "intermediates/exp_mat_sort_cells.pkl"
+        cell_exp_levels, exp_by_cells = aggregate_expression_level("cells", exp_mat, sort_exp_mat_path)
+        with open(chunked_exp_mat_path, 'wb') as chunked_exp_mat_out:
+            pkl.dump(exp_by_cells, chunked_exp_mat_out)
     cell_data_dict = {}
     with open(cell_annotation_path, 'rt') as cell_annotations_in:
         cell_reader = csv.reader(cell_annotations_in)
@@ -90,7 +110,11 @@ def process_cell_data(cell_annotation_path: str, exp_mat: list, cell_data_path: 
             row_num += 1
             exp_level = cell_exp_levels[row_num]
             tsne = [float(cell_row[idx]) if cell_row[idx] != "NA" else "NA" for idx in [13, 14]]
-            doublet = bool(cell_row[19])
+            # Weirdly, casting these strings to bools doesn't work. So we just do a manual check...lol
+            if cell_row[19] == "TRUE":
+                doublet = True
+            else:
+                doublet = False
             cluster = cell_row[22]
             traj = cell_row[23]
             umap = [float(cell_row[idx]) if cell_row[idx] != "NA" else "NA" for idx in [24, 25, 26]]
@@ -101,6 +125,9 @@ def process_cell_data(cell_annotation_path: str, exp_mat: list, cell_data_path: 
     exp_mat_filtered = [[], [], []]
     discarded_cells, empty_cells, processed_cells = 0, 0, 0
     for cell_id, exp_data in enumerate(exp_by_cells):
+        if cell_id not in cell_data_dict:
+            empty_cells += 1
+            continue
         cell_data = cell_data_dict[cell_id]
         cell_exp = cell_data[0]
         cell_doublet = cell_data[2]
@@ -135,7 +162,8 @@ def generate_gene_dict(gene_annotation_path: str, filt_exp_mat: list, gene_data_
     in a pickled dictionary and calculates the variance across all good cells of reads in each gene, and picks the top
     2000 genes by variance, returning a matrix of just these genes (across good cells)."""
     start = perf_counter()
-    gene_exp_levels, exp_by_genes = aggregate_expression_level("genes", filt_exp_mat)
+    sort_exp_mat_path = "intermediates/exp_mat_sort_genes.pkl"
+    gene_exp_levels, exp_by_genes = aggregate_expression_level("genes", filt_exp_mat, sort_exp_mat_path)
     gene_data_dict = {}
     with open(gene_annotation_path, 'rt') as gene_annotations_in:
         gene_reader = csv.reader(gene_annotations_in)
