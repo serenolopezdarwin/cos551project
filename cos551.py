@@ -8,8 +8,7 @@ import os
 import sys
 
 
-# noinspection PyDefaultArgument
-def log(text: str, calls=[0]):
+def log(text: str):
     """Given a string, writes that string into a logfile named after the calling script (NOT this module).
     Intentionally mutable default argument included, because we actually want to track function calls across scripts."""
     head_script = sys.argv[0]
@@ -17,15 +16,12 @@ def log(text: str, calls=[0]):
         os.mkdir("logs")
     now = datetime.now()
     logfile = f"logs/{head_script.replace('.py', '_')}{now.strftime('%m%d%y_%H%M')}.log"
-    if calls[0]:
+    if os.path.exists(logfile):
         log_out = open(logfile, 'a')
     else:
         log_out = open(logfile, 'w')
     log_out.write(text + '\n')
     log_out.close()
-    # Only evaluated once, returns false on first function call to reset logfile.
-    calls[0] += 1
-    return calls[0]
 
 
 class Mean:
