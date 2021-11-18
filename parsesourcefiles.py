@@ -12,7 +12,7 @@ import pickle as pkl
 from time import perf_counter
 
 
-def generate_exp_matrix(exp_data_path, sparse_mat_path):
+def generate_exp_matrix(exp_data_path: str, sparse_mat_path: str):
     """Given a sparse matrix text file, creates a list of lists corresponding to each entry (row, col, val)"""
     start = perf_counter()
     with open(exp_data_path) as exp_data_in:
@@ -31,7 +31,7 @@ def generate_exp_matrix(exp_data_path, sparse_mat_path):
     return sparse_mat
 
 
-def aggregate_expression_level(by, exp_mat):
+def aggregate_expression_level(by: str, exp_mat: list):
     """Given a dimension and an expression matrix, aggregates the expression level along each dimension, like doing the
     row or column sums of a non-sparse matrix. Returns the sums indexed by dimension ids (not indices, since dimensions
     are 1-indexed while indices are 0-indexed due to python's basic rules). Also returns the sorted zip object so that
@@ -73,7 +73,7 @@ def aggregate_expression_level(by, exp_mat):
     return aggregate_xp_list, chunked_exp_mat
 
 
-def process_cell_data(cell_annotation_path, exp_mat, cell_data_path, filtered_mat_path):
+def process_cell_data(cell_annotation_path: str, exp_mat: list, cell_data_path: str, filtered_mat_path: str):
     """Reads a csv file of cell annotations and extracts various data fields for each cell. Also reads an input sparse
     expression matrix, sorts it by cell ids, and calculates each cell's aggregate expression level. Then flags cells for
     removal from the dataset based on their overall expression levels or doublet membership."""
@@ -89,11 +89,11 @@ def process_cell_data(cell_annotation_path, exp_mat, cell_data_path, filtered_ma
             # Iterate first because cells are 1-indexed
             row_num += 1
             exp_level = cell_exp_levels[row_num]
-            tsne = [int(cell_row[idx]) for idx in [13, 14]]
+            tsne = [float(cell_row[idx]) if cell_row[idx] != "NA" else "NA" for idx in [13, 14]]
             doublet = bool(cell_row[19])
             cluster = cell_row[22]
             traj = cell_row[23]
-            umap = [int(cell_row[idx]) for idx in [24, 25, 26]]
+            umap = [float(cell_row[idx]) if cell_row[idx] != "NA" else "NA" for idx in [24, 25, 26]]
             cell_data_dict[row_num] = [exp_level, tsne, doublet, cluster, traj, umap]
     # Don't count first entry, as it is an empty initialization entry due to our cells being 1-indexed
     exp_mean = np.mean(cell_exp_levels[1:])
@@ -130,7 +130,7 @@ def process_cell_data(cell_annotation_path, exp_mat, cell_data_path, filtered_ma
     return cell_data_dict, exp_mat_filtered
 
 
-def generate_gene_dict(gene_annotation_path, filt_exp_mat, gene_data_path, double_filt_mat_path):
+def generate_gene_dict(gene_annotation_path: str, filt_exp_mat: list, gene_data_path: str, double_filt_mat_path: str):
     """Given a file of gene annotations and an expression matrix with bad cells filtered out, stores relevant gene data
     in a pickled dictionary and calculates the variance across all good cells of reads in each gene, and picks the top
     2000 genes by variance, returning a matrix of just these genes (across good cells)."""

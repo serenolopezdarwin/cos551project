@@ -9,7 +9,7 @@ import sys
 
 
 # noinspection PyDefaultArgument
-def log(text, calls=[0]):
+def log(text: str, calls=[0]):
     """Given a string, writes that string into a logfile named after the calling script (NOT this module).
     Intentionally mutable default argument included, because we actually want to track function calls across scripts."""
     head_script = sys.argv[0]
