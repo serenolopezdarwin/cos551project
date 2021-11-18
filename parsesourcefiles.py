@@ -235,7 +235,7 @@ def main():
         exp_matrix = generate_exp_matrix(source_paths[0], sparse_mat_path)
     cell_data_path = "intermediates/cell_data_dict.pkl"
     cell_filt_mat_path = "intermediates/cell_filt_exp_mat.pkl"
-    if os.path.exists(cell_data_path):
+    if os.path.exists(cell_data_path) and os.path.exists(cell_filt_mat_path):
         with open(cell_data_path, 'rb') as cell_data_in:
             cell_data_dict = pkl.load(cell_data_in)
         with open(cell_filt_mat_path, 'rb') as filtered_mat_in:
