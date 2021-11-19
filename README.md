@@ -29,6 +29,11 @@ away from the mean expression level across all cells.
 - Genes that are not members of the 2000 most variant genes across 
 the full dataset.
 
+### jobsubmission.sh
+
+Job submission script for use with SLURM. Should be modified
+based on user's cluster system.
+
 ### differentialexpressionanalysis.R
 
 Currently, empty.
