@@ -3,7 +3,7 @@
 Sereno Lopez-Darwin \
 November 2021
 
-Recreates analysis originally performed by Cao et al, 2019[^1].
+Recreates analysis originally performed by Cao et al., 2019[^1].
 
 ### cos551.py
 
