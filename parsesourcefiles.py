@@ -12,7 +12,7 @@ import pickle as pkl
 from time import perf_counter
 
 
-def generate_exp_matrix(exp_data_path: str, sparse_mat_path: str):
+def generate_exp_matrix(exp_data_path: str, sparse_mat_path: str) -> list:
     """Given a sparse matrix text file, creates a list of lists corresponding to each entry (row, col, val)"""
     start = perf_counter()
     with open(exp_data_path) as exp_data_in:
@@ -31,7 +31,7 @@ def generate_exp_matrix(exp_data_path: str, sparse_mat_path: str):
     return sparse_mat
 
 
-def aggregate_expression_level(by: str, exp_mat: list, sorted_exp_mat_path: str):
+def aggregate_expression_level(by: str, exp_mat: list, sorted_exp_mat_path: str) -> [list, list]:
     """Given a dimension and an expression matrix, aggregates the expression level along each dimension, like doing the
     row or column sums of a non-sparse matrix. Returns the sums indexed by dimension ids (not indices, since dimensions
     are 1-indexed while indices are 0-indexed due to python's basic rules). Also returns the sorted zip object so that
@@ -80,7 +80,8 @@ def aggregate_expression_level(by: str, exp_mat: list, sorted_exp_mat_path: str)
     return aggregate_xp_list, chunked_exp_mat
 
 
-def process_cell_data(cell_annotation_path: str, exp_mat: list, cell_data_path: str, filtered_mat_path: str):
+def process_cell_data(cell_annotation_path: str, exp_mat: list,
+                      cell_data_path: str, filtered_mat_path: str) -> [dict, list]:
     """Reads a csv file of cell annotations and extracts various data fields for each cell. Also reads an input sparse
     expression matrix, sorts it by cell ids, and calculates each cell's aggregate expression level. Then flags cells for
     removal from the dataset based on their overall expression levels or doublet membership."""
@@ -157,7 +158,8 @@ def process_cell_data(cell_annotation_path: str, exp_mat: list, cell_data_path: 
     return cell_data_dict, exp_mat_filtered
 
 
-def generate_gene_dict(gene_annotation_path: str, filt_exp_mat: list, gene_data_path: str, double_filt_mat_path: str):
+def generate_gene_dict(gene_annotation_path: str, filt_exp_mat: list,
+                       gene_data_path: str, double_filt_mat_path: str) -> [dict, list]:
     """Given a file of gene annotations and an expression matrix with bad cells filtered out, stores relevant gene data
     in a pickled dictionary and calculates the variance across all good cells of reads in each gene, and picks the top
     2000 genes by variance, returning a matrix of just these genes (across good cells)."""
@@ -212,7 +214,7 @@ def generate_gene_dict(gene_annotation_path: str, filt_exp_mat: list, gene_data_
     return gene_data_dict, exp_mat_filtered
 
 
-def main():
+def main() -> None:
     """Manager function. Checks if a variety of files exist, and if they don't, generates them. Details of each called
     function are in the corresponding docstrings."""
     # Creates any missing data directories for us.
