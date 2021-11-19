@@ -229,12 +229,6 @@ def main() -> None:
     for source_path in source_paths:
         if not os.path.exists(source_path):
             exit(f"Sourcefile {source_path} missing. Please provide the appropriate file.")
-    sparse_mat_path = "intermediates/sparse_mat.pkl"
-    if os.path.exists(sparse_mat_path):
-        with open(sparse_mat_path, 'rb') as sparse_mat_in:
-            exp_matrix = pkl.load(sparse_mat_in)
-    else:
-        exp_matrix = generate_exp_matrix(source_paths[0], sparse_mat_path)
     cell_data_path = "intermediates/cell_data_dict.pkl"
     cell_filt_mat_path = "intermediates/cell_filt_exp_mat.pkl"
     if os.path.exists(cell_data_path) and os.path.exists(cell_filt_mat_path):
@@ -243,6 +237,13 @@ def main() -> None:
         with open(cell_filt_mat_path, 'rb') as filtered_mat_in:
             cell_filt_exp_mat = pkl.load(filtered_mat_in)
     else:
+        # We only need the original sparse matrix if we don't have the cell filtered matrix.
+        sparse_mat_path = "intermediates/sparse_mat.pkl"
+        if os.path.exists(sparse_mat_path):
+            with open(sparse_mat_path, 'rb') as sparse_mat_in:
+                exp_matrix = pkl.load(sparse_mat_in)
+        else:
+            exp_matrix = generate_exp_matrix(source_paths[0], sparse_mat_path)
         cell_data_dict, cell_filt_exp_mat = process_cell_data(source_paths[1], exp_matrix, cell_data_path,
                                                               cell_filt_mat_path)
     gene_data_path = "intermediates/gene_data_dict.pkl"
