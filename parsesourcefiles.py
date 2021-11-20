@@ -62,11 +62,13 @@ def aggregate_expression_level(by: str, exp_mat: list, sorted_exp_mat_path: str)
     # We also add an extra index, since the first index (0) will be empty due to cells and genes both being 1-indexed.
     # This will simplify later references to the generated data object downstream.
     aggregate_xp_list = [0] * max_idx
-    aggregate_xp, aggregate_data = 0, []
     # Maximum index we can reference in the matrix
     exp_mat_max = len(exp_mat_sort) - 1
     chunked_exp_mat = [[] for _ in range(max_idx)]
+    aggregate_xp, aggregate_data = 0, []
     for idx, (id_num, exp, other_id) in enumerate(exp_mat_sort):
+        if idx % 10000000 == 0:
+            print(f"{str(idx // 10000000)}% Done")
         aggregate_xp += exp
         aggregate_data.append((other_id, exp))
         # Checks if the next entry in the list is from a different id or doesn't exist.
@@ -190,7 +192,7 @@ def generate_gene_dict(gene_annotation_path: str, filt_exp_mat: list,
         gene_variance = np.var([entry[1] for entry in gene_data])
         variance_list.append(gene_variance)
     # Anything with variance more than or equal to this value is analyzed as one of the top 2000 most variant genes.
-    variance_cutoff = sorted(variance_list[-2000])
+    variance_cutoff = sorted(variance_list)[-2000]
     exp_mat_filtered = [[], [], []]
     for gene_id, gene_data in enumerate(exp_by_genes):
         # Skips genes with no data.
