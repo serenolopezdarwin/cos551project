@@ -67,8 +67,6 @@ def aggregate_expression_level(by: str, exp_mat: list, sorted_exp_mat_path: str)
     chunked_exp_mat = [[] for _ in range(max_idx)]
     aggregate_xp, aggregate_data = 0, []
     for idx, (id_num, exp, other_id) in enumerate(exp_mat_sort):
-        if idx % 10000000 == 0:
-            print(f"{str(idx // 10000000)}% Done")
         aggregate_xp += exp
         aggregate_data.append((other_id, exp))
         # Checks if the next entry in the list is from a different id or doesn't exist.
