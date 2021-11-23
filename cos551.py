@@ -65,7 +65,7 @@ class Bidict(dict):
         self.inverse.setdefault(value, []).append(key)
 
     def __delitem__(self, key):
-        self.inverse.setdefault(self[key],[]).remove(key)
+        self.inverse.setdefault(self[key], []).remove(key)
         if self[key] in self.inverse and not self.inverse[self[key]]:
             del self.inverse[self[key]]
         super(Bidict, self).__delitem__(key)

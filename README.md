@@ -34,9 +34,11 @@ the full dataset.
 Job submission script for use with SLURM. Should be modified
 based on user's cluster system.
 
-### differentialexpressionanalysis.R
+### differentialexpressionanalysis.py
 
-Currently, empty.
+Plotting script that performs differential expression analysis on 
+each gene per-cluster and plots the genes with highest percentage
+expression and log-fold-change from other clusters.
 
 [^1]: Cao, J et al. The single-cell transcriptional landscape of 
 mammalian organogenesis. *Nature* **566**, 496–502 (2019).
