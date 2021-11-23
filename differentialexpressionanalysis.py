@@ -63,7 +63,7 @@ def count_gene_percentages(filt_mat: list, cell_data_dict: dict, gene_key: Bidic
             pkl.dump(matrix_by_cells, filt_mat_by_cells_out)
     for cell_id, cell_sparse_mat in enumerate(matrix_by_cells):
         # Skips empty cells
-        if cell_id not in cell_data_dict:
+        if cell_id not in cell_data_dict or not cell_sparse_mat:
             continue
         cell_type = cell_data_dict[cell_id][3]
         # Skips cells with no cell type membership
@@ -71,7 +71,7 @@ def count_gene_percentages(filt_mat: list, cell_data_dict: dict, gene_key: Bidic
             continue
         # Builds a list of the genes expressed in this cell and translates their indexes to our 1-1999 standard.
         expressed_genes = []
-        for gene_id, _ in matrix_by_cells:
+        for gene_id, _ in cell_sparse_mat:
             expressed_genes.append(gene_id)
         expressed_gene_idxs = swap_gene_indexing(expressed_genes, gene_key)
         for gene_idx in range(0, 2000):
