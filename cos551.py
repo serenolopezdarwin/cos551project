@@ -49,7 +49,7 @@ class Mean:
         self.avg = (self.total / self.count)
 
 
-def aggregate_expression_level(by: str, exp_mat: list, sorted_exp_mat_path: str) -> [list, list]:
+def aggregate_expression_level(by: str, exp_mat: list, sorted_exp_mat_path="") -> [list, list]:
     """Given a dimension and an expression matrix, aggregates the expression level along each dimension, like doing the
     row or column sums of a non-sparse matrix. Returns the sums indexed by dimension ids (not indices, since dimensions
     are 1-indexed while indices are 0-indexed due to python's basic rules). Also returns the sorted zip object so that
@@ -64,7 +64,7 @@ def aggregate_expression_level(by: str, exp_mat: list, sorted_exp_mat_path: str)
     else:
         raise KeyError("Incorrect 'by' argument passed to aggregation function")
     # Avoids sorting bottleneck, and lets us verify our chunking method more easily.
-    if os.path.exists(sorted_exp_mat_path):
+    if sorted_exp_mat_path and os.path.exists(sorted_exp_mat_path):
         with open(sorted_exp_mat_path, 'rb') as sorted_exp_mat_in:
             exp_mat_sort = pkl.load(sorted_exp_mat_in)
     else:
@@ -72,8 +72,9 @@ def aggregate_expression_level(by: str, exp_mat: list, sorted_exp_mat_path: str)
         unprocessed_list = exp_mat[other_idx]
         exp_list = exp_mat[2]
         exp_mat_sort = sorted(zip(id_list, exp_list, unprocessed_list))
-        with open(sorted_exp_mat_path, 'wb') as sorted_exp_mat_out:
-            pkl.dump(exp_mat_sort, sorted_exp_mat_out)
+        if sorted_exp_mat_path:
+            with open(sorted_exp_mat_path, 'wb') as sorted_exp_mat_out:
+                pkl.dump(exp_mat_sort, sorted_exp_mat_out)
     # The exp_mat_sort call finds the max of id_list without having to iterate over the list again. Adds one because
     # Anything we initialize with it is 1-indexed.
     max_idx = exp_mat_sort[-1][0] + 1

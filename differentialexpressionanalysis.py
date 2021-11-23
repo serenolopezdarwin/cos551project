@@ -3,6 +3,7 @@
 """
 # Imports
 from cos551 import *
+from time import perf_counter
 import os
 import pickle as pkl
 # Globals
@@ -18,13 +19,23 @@ CELL_TYPES = ["Connective tissue progenitors", "Chondrocytes and osteoblasts", "
               "Cardiac muscle lineage", "Megakaryocytes", "Melanocytes", "Lens", "Neutrophils"]
 
 
-def aggregate_matrix_by_cell_type(exp_matrix: list, cell_data_dict: dict) -> dict:
-    """Given a sparse matrix, splits it into a separate sparse matrix for each cell type. Stores the separated matrix
-    in a dictionary keyed to cell types."""
-    matrix_by_cell_type = {}
-    _, matrix_by_cells = aggregate_expression_level("cells", exp_matrix, "intermediates/filt_mat_chunk_cells.pkl")
-    for
+def count_gene_percentages(filt_mat: list, cell_data_dict: dict) -> dict:
+    """Counts the percentage of cells each gene is expressed in, per-cluster. Returns a list of each cell type (in
+    order of our CELL_TYPES) and their corresponding expression percentage for each gene."""
+    start = perf_counter()
+    for cell_type in CELL_TYPES:
 
+    _, matrix_by_cells = aggregate_expression_level("cells", filt_mat)
+    with open("intermediates/filt_mat_chunk_cell.pkl", 'wb')
+    for cell_id, cell_sparse_mat in enumerate(matrix_by_cells):
+        if cell_id not in cell_data_dict:
+            continue
+        cell_type = cell_data_dict[cell_id][3]
+        if cell_type == "NA":
+            continue
+
+
+    log(f"Expression matrix separated by cell type in {str(perf_counter() - start)}")
     return matrix_by_cell_type
 
 
