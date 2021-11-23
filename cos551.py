@@ -51,7 +51,7 @@ class Mean:
 
 class Bidict(dict):
     """A dictionary that can be reverse-hash searched with self.inverse[value] (returns key). Used to 'link' two lists
-    to look up translations between them."""
+    to look up translations between them. Reflects setitem and delitem to the inverse version of the dictionary."""
     def __init__(self, *args, **kwargs):
         super(Bidict, self).__init__(*args, **kwargs)
         self.inverse = {}
