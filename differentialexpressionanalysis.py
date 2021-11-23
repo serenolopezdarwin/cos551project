@@ -5,23 +5,24 @@
 from cos551 import *
 import os
 import pickle as pkl
+# Globals
+CELL_TYPES = ["Connective tissue progenitors", "Chondrocytes and osteoblasts", "Intermediate mesoderm",
+              "Jaw and tooth progenitors", "Excitatory neurons", "Epithelial cells", "Radial glia",
+              "Early mesenchyme", "Neural progenitor cells", "Postmitotic premature neurons",
+              "Oligodendrocyte progenitors", "Isthmic organizer cells", "Myocytes", "Dorsal neural tube cells",
+              "Inhibitory neurons", "Stromal cells", "Osteoblasts", "Inhibitory neuron progenitors",
+              "Premature oligodendrocytes", "Endothelial cells", "Chondrocyte progenitors",
+              "Definitive erythrocyte lineage", "Schwann cell precursors", "Sensory neurons", "Limb mesenchyme",
+              "Primitive erythroid lineage", "Inhibitory interneurons", "Granule neurons", "Hepatocytes",
+              "Notochord and floor plate cells", "White blood cells", "Ependymal cells", "Cholinergic neurons",
+              "Cardiac muscle lineage", "Megakaryocytes", "Melanocytes", "Lens", "Neutrophils"]
 
 
-def analyze_cell_data_dict(cell_data_dict: dict) -> [int, list]:
-    """Given a dictionary of cell data, returns the cell count and a list of all cell types."""
-    cell_count = len(cell_data_dict.keys())
-    cell_types = []
-    for cell_data in cell_data_dict.items():
-        cell_type = cell_data[3]
-        if cell_type not in cell_types:
-            cell_types.append(cell_type)
-    return cell_count, cell_types
-
-
-def aggregate_matrix_by_cell_type(matrix: list, cell_data_dict: dict) -> dict:
+def aggregate_matrix_by_cell_type(exp_matrix: list, cell_data_dict: dict) -> dict:
     """Given a sparse matrix, splits it into a separate sparse matrix for each cell type. Stores the separated matrix
     in a dictionary keyed to cell types."""
     matrix_by_cell_type = {}
+    _, matrix_by_cells = aggregate_expression_level("cells", exp_matrix, "intermediates/filt_mat_chunk_cells.pkl")
     for
 
     return matrix_by_cell_type

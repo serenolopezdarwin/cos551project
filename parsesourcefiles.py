@@ -52,6 +52,15 @@ def process_cell_data(cell_annotation_path: str, exp_mat: list,
         with open(chunked_exp_mat_path, 'wb') as chunked_exp_mat_out:
             pkl.dump(exp_by_cells, chunked_exp_mat_out)
     cell_data_dict = {}
+    # Reference cell type lists that are incorrectly annotated and will be replaced.
+    annotation_types = ["Chondroctye progenitors", "Schwann cell precursor", "Chondrocytes & osteoblasts",
+                        "Cardiac muscle lineages", "Neural Tube", "Definitive erythroid lineage",
+                        "Premature oligodendrocyte", "Oligodendrocyte Progenitors", "Intermediate Mesoderm",
+                        "Ependymal cell", "Notochord cells"]
+    plot_types = ["Chondrocyte progenitors", "Schwann cell precursors", "Chondrocytes and osteoblasts",
+                  "Cardiac muscle lineage", "Dorsal neural tube cells", "Definitive erythrocyte lineage",
+                  "Premature oligodendrocytes", "Oligodendrocyte progenitors", "Intermediate mesoderm",
+                  "Ependymal cells", "Notochord and floor plate cells"]
     with open(cell_annotation_path, 'rt') as cell_annotations_in:
         cell_reader = csv.reader(cell_annotations_in)
         # Skips header
@@ -68,6 +77,13 @@ def process_cell_data(cell_annotation_path: str, exp_mat: list,
             else:
                 doublet = False
             cluster = cell_row[22]
+            # Checks if the cell type is one of the incorrectly annotated types from the annotations and replaces it
+            # with the appropriate type labeled in the final plot.
+            try:
+                type_idx = annotation_types.index(cluster)
+                cluster = plot_types[type_idx]
+            except ValueError:
+                pass
             traj = cell_row[23]
             umap = [float(cell_row[idx]) if cell_row[idx] != "NA" else "NA" for idx in [24, 25, 26]]
             cell_data_dict[row_num] = [exp_level, tsne, doublet, cluster, traj, umap]
