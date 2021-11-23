@@ -49,9 +49,6 @@ def count_gene_percentages(filt_mat: list, cell_data_dict: dict, gene_key: Bidic
     order of our CELL_TYPES) and their corresponding expression percentage for each gene."""
     start = perf_counter()
     expression_counts = {}
-    # Changes the genes in our filtered matrix to the indices 0-1999.
-    swapped_gene_indices = swap_gene_indexing(filt_mat[0], gene_key)
-    filt_mat[0] = swapped_gene_indices
     for cell_type in CELL_TYPES:
         # This will store the expressed and unexpressed counts for each of our genes. First entry is total count,
         # second is expressed count.
