@@ -19,25 +19,31 @@ CELL_TYPES = ["Connective tissue progenitors", "Chondrocytes and osteoblasts", "
               "Cardiac muscle lineage", "Megakaryocytes", "Melanocytes", "Lens", "Neutrophils"]
 
 
+def swap_gene_indexing(gene_ids: list, key: dict, to="internal") -> list:
+    """Given an array of gene ids, translates each id either to indices between 0 and 1999 ('internal') or back to the
+    original gene ids to be used with out data dictionary ('original')."""
+
+
+
+
 def count_gene_percentages(filt_mat: list, cell_data_dict: dict) -> dict:
-    """Counts the percentage of cells each gene is expressed in, per-cluster. Returns a list of each cell type (in
+    """Counts the percentage of cells each gene is expressed in, per-cluster. Returns a dict of each cell type (in
     order of our CELL_TYPES) and their corresponding expression percentage for each gene."""
     start = perf_counter()
+    expression_percentages = {}
     for cell_type in CELL_TYPES:
-
+        expression_percentages[cell_type] = []
     _, matrix_by_cells = aggregate_expression_level("cells", filt_mat)
-    with open("intermediates/filt_mat_chunk_cell.pkl", 'wb')
+    with open("intermediates/filt_mat_chunk_cell.pkl", 'wb') as filt_mat_by_cells_out:
+        pkl.dump(matrix_by_cells, filt_mat_by_cells_out)
     for cell_id, cell_sparse_mat in enumerate(matrix_by_cells):
         if cell_id not in cell_data_dict:
             continue
         cell_type = cell_data_dict[cell_id][3]
         if cell_type == "NA":
             continue
-
-
     log(f"Expression matrix separated by cell type in {str(perf_counter() - start)}")
-    return matrix_by_cell_type
-
+    return expression_percentages
 
 
 def main() -> None:
@@ -53,7 +59,6 @@ def main() -> None:
             cell_data_dict = pkl.load(cell_data_in)
         with open("intermediates/gene_data_dict.pkl", 'rb') as gene_data_in:
             gene_data_dict = pkl.load(gene_data_in)
-
 
 
 if __name__ == "__main__":
