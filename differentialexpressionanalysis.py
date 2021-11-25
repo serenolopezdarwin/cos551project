@@ -1,5 +1,6 @@
 """
-
+Given a filtered cell-by-gene expression sparse matrix, calculates the most enriched genes in each of our defined
+cell types and plots them in percentage-by-log-fold-change dot plots.
 """
 # Imports
 from cos551 import *
@@ -71,6 +72,7 @@ def count_gene_percentages(filt_mat: list, cell_data_dict: dict, gene_key: Bidic
             continue
         # Builds a list of the genes expressed in this cell and translates their indexes to our 1-1999 standard.
         expressed_genes = []
+        # TODO: What exactly is this data structure? Unpacking gives a tuple as gene_id somehow.
         for gene_id, _ in cell_sparse_mat:
             expressed_genes.append(gene_id)
         expressed_gene_idxs = swap_gene_indexing(expressed_genes, gene_key)

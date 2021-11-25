@@ -26,6 +26,34 @@ def log(text: str):
     log_out.close()
 
 
+def default_arg_decorator(func):
+    """Nested decorator that enables default arguments within other decorators."""
+    def wrapped_decorator(*args):
+        if len(args) == 1 and callable(args[0]):
+            return func(args[0])
+        else:
+            def real_decorator(decorated):
+                return func(decorated, *args)
+            return real_decorator
+    return wrapped_decorator
+
+
+@default_arg_decorator
+def log_time(func, task=""):
+    """Decorator function that outputs how long each function takes to complete. Takes argument of task (just
+    a string summary of what the function is doing and logs the time it takes to complete the function. Task defaults
+    to the name of the decorated function."""
+    if not task:
+        task = func.__name__
+
+    def wrapper(*args, **kwargs):
+        start = perf_counter()
+        val = func(*args, **kwargs)
+        log(f"{task} in {str(perf_counter() - start)}")
+        return val
+    return wrapper
+
+
 class Mean:
     """Creates an object class "Mean" that stores both average and count data for a set of numbers, that can be easily
     appended with additional values during a loop. Avoids generating additional variables in our scripts"""
