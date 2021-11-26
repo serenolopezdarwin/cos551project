@@ -10,18 +10,34 @@ import pickle as pkl
 import sys
 
 
-def log(text: str):
+class LogStartTime:
+    """Decorator object that counts how many times a function has been called."""
+    def __init__(self, func):
+        self.func = func
+        self.first_call = True
+        self.initialized = ""
+
+    def __call__(self, *args, **kwargs):
+        # The first time the function is called, it sets the initialization time and denotes the fact that the function
+        # has been called once before.
+        if self.first_call:
+            self.first_call = False
+            self.initialized = datetime.now()
+        return self.func(initialized=self.initialized, *args, **kwargs)
+
+
+@LogStartTime
+def log(text: str, initialized=datetime.now()) -> None:
     """Given a string, writes that string into a logfile named after the calling script (NOT this module).
     Intentionally mutable default argument included, because we actually want to track function calls across scripts."""
     head_script = sys.argv[0]
     if not os.path.exists("logs"):
         os.mkdir("logs")
-    now = datetime.now()
-    logfile = f"logs/{head_script.replace('.py', '_')}{now.strftime('%m%d%y_%H%M')}.log"
-    if os.path.exists(logfile):
-        log_out = open(logfile, 'a')
-    else:
+    logfile = f"logs/{head_script.replace('.py', '_')}{initialized.strftime('%m%d%y_%H%M')}.log"
+    if log.first_call:
         log_out = open(logfile, 'w')
+    else:
+        log_out = open(logfile, 'a')
     log_out.write(text + '\n')
     log_out.close()
 
