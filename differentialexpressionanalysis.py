@@ -41,7 +41,12 @@ def swap_gene_indexing(gene_ids: list, key: Bidict, to="standard") -> list:
         raise KeyError("Incorrect 'to' argument passed to gene id swapping function.")
     new_ids = []
     for gene_id in enumerate(gene_ids):
-        new_ids.append(applied_key[gene_id])
+        new_id = applied_key[gene_id]
+        if to == "standard":
+            new_ids.append(new_id)
+        # The inverted dictionary's values are lists, so we need to grab the first item.
+        else:
+            new_ids += new_id[0]
     return new_ids
 
 
