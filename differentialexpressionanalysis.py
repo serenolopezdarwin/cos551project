@@ -116,7 +116,7 @@ def main() -> None:
     else:
         gene_ids = list(set(filt_mat[0]))
         expression_percentages = count_gene_percentages(filt_mat, cell_data_dict, gene_ids)
-        with open(expression_percentage_path, 'rb') as exp_perc_out:
+        with open(expression_percentage_path, 'wb') as exp_perc_out:
             pkl.dump(expression_percentages, exp_perc_out)
 
 
