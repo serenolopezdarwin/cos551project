@@ -4,7 +4,7 @@ cell types and plots them in percentage-by-log-fold-change dot plots.
 """
 # Imports
 from cos551 import *
-from time import perf_counter
+import numpy as np
 import os
 import pickle as pkl
 # Globals
@@ -49,10 +49,10 @@ def swap_gene_indexing(gene_ids: list, key: Bidict, to="standard") -> list:
     return new_ids
 
 
+@log_time("Gene expression percentages calculated")
 def count_gene_percentages(filt_mat: list, cell_data_dict: dict, gene_ids: list) -> dict:
     """Counts the percentage of cells each gene is expressed in, per-cluster. Returns a dict of each cell type (in
     order of our CELL_TYPES) and their corresponding expression percentage for each gene."""
-    start = perf_counter()
     expression_counts = {}
     for cell_type in CELL_TYPES:
         # This will store the expressed and unexpressed counts for each of our genes. First entry is total count,
@@ -91,8 +91,86 @@ def count_gene_percentages(filt_mat: list, cell_data_dict: dict, gene_ids: list)
         for gene_id, gene_exp in expression_data.items():
             expression_percentage = gene_exp[1] / gene_exp[0]
             expression_percentages[cell_type][gene_id] = expression_percentage
-    log(f"Expression percentages calculated in {str(perf_counter() - start)}")
     return expression_percentages
+
+
+@log_time("Expression levels calculated")
+def calculate_fold_changes(filt_mat: list, cell_data_dict: dict):
+    """Calculates the relative fold change from background of each gene in each cluster. Returns a dict keyed to
+    clusters with subdicts keyed to genes, with values of the fold change of that gene in that cluster."""
+    filt_mat_chunk_gene_path = "intermediates/filt_mat_chunk_gene.pkl"
+    cell_count = max(list(set(filt_mat[1])))
+    if os.path.exists(filt_mat_chunk_gene_path):
+        with open(filt_mat_chunk_gene_path, 'rb') as filt_mat_by_genes_in:
+            matrix_by_genes = pkl.load(filt_mat_by_genes_in)
+    else:
+        _, matrix_by_genes = aggregate_expression_level("genes", filt_mat)
+        with open(filt_mat_chunk_gene_path, 'wb') as filt_mat_by_genes_out:
+            pkl.dump(matrix_by_genes, filt_mat_by_genes_out)
+    # This will hold all legitimate cell ids and their corresponding clusters.
+    good_cells = Bidict({})
+    first_gene = True
+    # Will hold the fold changes of each gene in each cluster.
+    fold_changes = {}
+    for gene_id, gene_sparse_mat in enumerate(matrix_by_genes):
+        cells = gene_sparse_mat[0]
+        exprs = gene_sparse_mat[1]
+        # Makes a dictionary of each expressing cell keyed to its expression level.
+        exp_dict = {}
+        for cell, exp in zip(cells, exprs):
+            exp_dict[cell] = exp
+        # On our first gene, we generate the cell bidict that we will use to do expression level calculations.
+        if first_gene:
+            for cell_id in range(1, cell_count + 1):
+                # Catches and skips erroneous cells
+                if cell_id not in cell_data_dict:
+                    continue
+                cell_data = cell_data_dict[cell_id]
+                cell_doublet = cell_data[2]
+                cell_cluster = cell_data[3]
+                # Initializes the clusters for our fold_changes dictionary.
+                if cell_cluster not in fold_changes:
+                    fold_changes[cell_cluster] = {}
+                # Skips badly annotated cells.
+                if cell_doublet or cell_cluster == "NA":
+                    continue
+                good_cells[cell_id] = cell_cluster
+            first_gene = False
+        # This will be a dictionary of the gene's expression level as lists across each cell.
+        cluster_exp = {}
+        total_exp = []
+        for cell, cluster in good_cells.items():
+            if cluster not in cluster_exp:
+                cluster_exp[cluster] = []
+            # Adds pseudocount of 0.01.
+            if cell not in exp_dict:
+                exp = 0.01
+            else:
+                exp = exp_dict[cell]
+            cluster_exp[cluster].append(exp)
+            total_exp.append(exp)
+        exp_mean = np.mean(total_exp)
+        exp_var = np.var(total_exp)
+        # Normalizes to zero mean and unit variance, then stores the mean of the normalized expression for each cluster.
+        # Also builds a full count of expression and total count to get the other piece of the mean.
+        cluster_means = {}
+        norm_sum = 0
+        norm_count = 0
+        for cluster, exprs in cluster_exp.items():
+            normalized_exp = [(exp - exp_mean) / exp_var for exp in exprs]
+            cluster_sum = sum(normalized_exp)
+            cluster_count = len(normalized_exp)
+            norm_sum += cluster_sum
+            norm_count += cluster_count
+            cluster_means[cluster] = (cluster_sum, cluster_count)
+        for cluster, (cluster_sum, cluster_count) in cluster_means.items():
+            bg_sum = norm_sum - cluster_sum
+            bg_count = norm_count - cluster_count
+            bg_mean = bg_sum / bg_count
+            cluster_mean = cluster_sum / cluster_count
+            fold_change = cluster_mean / bg_mean
+            fold_changes[cluster][gene_id] = fold_change
+    return fold_changes
 
 
 def main() -> None:
@@ -102,6 +180,7 @@ def main() -> None:
         exit("Filtered matrix not found. Run parsesourcefiles.py to generate.")
     else:
         log("Log initialized...")
+        log("Loading data...")
         with open(double_filt_mat_path, 'rb') as filt_mat_in:
             # This matrix is sparse, with three corresponding lists of gene id, cell id, and expression level.
             filt_mat = pkl.load(filt_mat_in)
@@ -109,6 +188,8 @@ def main() -> None:
             cell_data_dict = pkl.load(cell_data_in)
         with open("intermediates/gene_data_dict.pkl", 'rb') as gene_data_in:
             gene_data_dict = pkl.load(gene_data_in)
+            genes_by_name = invert_hash(gene_data_dict, array_vals=True, identifier=0).inverse
+        log("Data Loaded.")
     expression_percentage_path = "intermediates/expression_percentages.pkl"
     if os.path.exists(expression_percentage_path):
         with open(expression_percentage_path, 'rb') as exp_perc_in:
@@ -118,6 +199,14 @@ def main() -> None:
         expression_percentages = count_gene_percentages(filt_mat, cell_data_dict, gene_ids)
         with open(expression_percentage_path, 'wb') as exp_perc_out:
             pkl.dump(expression_percentages, exp_perc_out)
+    fold_change_path = "intermediates/fold_changes.pkl"
+    if os.path.exists(fold_change_path):
+        with open(fold_change_path, 'rb') as fc_in:
+            fold_changes = pkl.load(fc_in)
+    else:
+        fold_changes = calculate_fold_changes(filt_mat, cell_data_dict)
+        with open(fold_change_path, 'wb') as fc_out:
+            pkl.dump(fold_changes, fc_out)
 
 
 if __name__ == "__main__":

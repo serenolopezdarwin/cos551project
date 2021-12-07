@@ -115,6 +115,18 @@ class Bidict(dict):
         super(Bidict, self).__delitem__(key)
 
 
+def invert_hash(in_dict: dict, array_vals=False, identifier=0) -> Bidict:
+    """Converts a dictionary to a bidict. If the dictionary's values are arrays, will use the identifier argument to
+    use that field of the dictionary as the values in the bidict."""
+    out_dict = Bidict({})
+    for key, value in in_dict.items():
+        if array_vals:
+            out_dict[key] = value[identifier]
+        else:
+            out_dict[key] = value
+    return out_dict
+
+
 def aggregate_expression_level(by: str, exp_mat: list, sorted_exp_mat_path="") -> [list, list]:
     """Given a dimension and an expression matrix, aggregates the expression level along each dimension, like doing the
     row or column sums of a non-sparse matrix. Returns the sums indexed by dimension ids (not indices, since dimensions
