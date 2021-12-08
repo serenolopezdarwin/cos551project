@@ -128,7 +128,7 @@ def calculate_fold_changes(filt_mat: list, cell_data_dict: dict):
     # Overall cell count for background calculations.
     norm_count = len(good_cells.keys())
     # Tracks progress, mostly for debugging.
-    log("Calculating fold changes...")
+    print("Calculating fold changes...")
     processed_genes = 0
     for gene_id, gene_sparse_mat in enumerate(matrix_by_genes):
         # Skips empty genes.
@@ -173,11 +173,12 @@ def calculate_fold_changes(filt_mat: list, cell_data_dict: dict):
             bg_count = norm_count - cluster_count
             bg_mean = bg_sum / bg_count
             cluster_mean = cluster_sum / cluster_count
-            fold_change = cluster_mean / bg_mean
-            fold_changes[cluster][gene_id] = fold_change
+            # We can get negatives so we want the absolute difference between these two.
+            enrichment = cluster_mean - bg_mean
+            fold_changes[cluster][gene_id] = enrichment
         if processed_genes % 20 == 0:
-            percent_processed = processed_genes / 20
-            log(f"{percent_processed}% done.")
+            percent_processed = processed_genes // 20
+            print(f"{percent_processed}% done.")
     return fold_changes
 
 
