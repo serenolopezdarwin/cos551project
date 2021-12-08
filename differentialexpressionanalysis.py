@@ -99,7 +99,7 @@ def calculate_fold_changes(filt_mat: list, cell_data_dict: dict):
     """Calculates the relative fold change from background of each gene in each cluster. Returns a dict keyed to
     clusters with subdicts keyed to genes, with values of the fold change of that gene in that cluster."""
     filt_mat_chunk_gene_path = "intermediates/filt_mat_chunk_gene.pkl"
-    cell_count = max(list(set(filt_mat[1])))
+    cell_ids = list(set(filt_mat[1]))
     if os.path.exists(filt_mat_chunk_gene_path):
         with open(filt_mat_chunk_gene_path, 'rb') as filt_mat_by_genes_in:
             matrix_by_genes = pkl.load(filt_mat_by_genes_in)
@@ -107,39 +107,43 @@ def calculate_fold_changes(filt_mat: list, cell_data_dict: dict):
         _, matrix_by_genes = aggregate_expression_level("genes", filt_mat)
         with open(filt_mat_chunk_gene_path, 'wb') as filt_mat_by_genes_out:
             pkl.dump(matrix_by_genes, filt_mat_by_genes_out)
-    # This will hold all legitimate cell ids and their corresponding clusters.
+    # Will hold all legitimate cell ids and their corresponding clusters.
     good_cells = Bidict({})
-    first_gene = True
     # Will hold the fold changes of each gene in each cluster.
     fold_changes = {}
+    for cell_id in cell_ids:
+        # Catches and skips erroneous cells
+        if cell_id not in cell_data_dict:
+            continue
+        cell_data = cell_data_dict[cell_id]
+        cell_doublet = cell_data[2]
+        cell_cluster = cell_data[3]
+        # Initializes the clusters for our fold_changes dictionary.
+        if cell_cluster not in fold_changes:
+            fold_changes[cell_cluster] = {}
+        # Skips badly annotated cells.
+        if cell_doublet or cell_cluster == "NA":
+            continue
+        good_cells[cell_id] = cell_cluster
+    # Overall cell count for background calculations.
+    norm_count = len(good_cells.keys())
     # Tracks progress, mostly for debugging.
     log("Calculating fold changes...")
-    percent_done = 0
+    processed_genes = 0
     for gene_id, gene_sparse_mat in enumerate(matrix_by_genes):
-        # Fastest way to do this.
-        cells = [cell for cell, _ in gene_sparse_mat]
-        exprs = [exp for _, exp in gene_sparse_mat]
+        # Skips empty genes.
+        if not gene_sparse_mat:
+            continue
+        else:
+            processed_genes += 1
         # Makes a dictionary of each expressing cell keyed to its expression level.
         exp_dict = {}
-        for cell, exp in zip(cells, exprs):
+        cells = []
+        exprs = []
+        for cell, exp in gene_sparse_mat:
             exp_dict[cell] = exp
-        # On our first gene, we generate the cell bidict that we will use to do expression level calculations.
-        if first_gene:
-            for cell_id in range(1, cell_count + 1):
-                # Catches and skips erroneous cells
-                if cell_id not in cell_data_dict:
-                    continue
-                cell_data = cell_data_dict[cell_id]
-                cell_doublet = cell_data[2]
-                cell_cluster = cell_data[3]
-                # Initializes the clusters for our fold_changes dictionary.
-                if cell_cluster not in fold_changes:
-                    fold_changes[cell_cluster] = {}
-                # Skips badly annotated cells.
-                if cell_doublet or cell_cluster == "NA":
-                    continue
-                good_cells[cell_id] = cell_cluster
-            first_gene = False
+            cells.append(cell)
+            exprs.append(exp)
         # This will be a dictionary of the gene's expression level as lists across each cell.
         cluster_exp = {}
         total_exp = []
@@ -154,29 +158,26 @@ def calculate_fold_changes(filt_mat: list, cell_data_dict: dict):
             cluster_exp[cluster].append(exp)
             total_exp.append(exp)
         exp_mean = np.mean(total_exp)
-        exp_var = np.var(total_exp)
+        exp_stdev = np.std(total_exp)
         # Normalizes to zero mean and unit variance, then stores the mean of the normalized expression for each cluster.
         # Also builds a full count of expression and total count to get the other piece of the mean.
         cluster_means = {}
-        norm_sum = 0
-        norm_count = 0
         for cluster, exprs in cluster_exp.items():
-            normalized_exp = [(exp - exp_mean) / exp_var for exp in exprs]
+            normalized_exp = [(exp - exp_mean) / exp_stdev for exp in exprs]
             cluster_sum = sum(normalized_exp)
             cluster_count = len(normalized_exp)
-            norm_sum += cluster_sum
-            norm_count += cluster_count
             cluster_means[cluster] = (cluster_sum, cluster_count)
         for cluster, (cluster_sum, cluster_count) in cluster_means.items():
-            bg_sum = norm_sum - cluster_sum
+            # The normalized sum across all data will be zero since it's mean-centered.
+            bg_sum = 0 - cluster_sum
             bg_count = norm_count - cluster_count
             bg_mean = bg_sum / bg_count
             cluster_mean = cluster_sum / cluster_count
             fold_change = cluster_mean / bg_mean
             fold_changes[cluster][gene_id] = fold_change
-        if gene_id % 260 == 0:
-            percent_done += 1
-            log(f"{percent_done}% done.")
+        if processed_genes % 20 == 0:
+            percent_processed = processed_genes / 20
+            log(f"{percent_processed}% done.")
     return fold_changes
 
 

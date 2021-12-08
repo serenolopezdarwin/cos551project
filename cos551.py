@@ -150,6 +150,7 @@ def aggregate_expression_level(by: str, exp_mat: list, sorted_exp_mat_path="") -
         unprocessed_list = exp_mat[other_idx]
         exp_list = exp_mat[2]
         exp_mat_sort = sorted(zip(id_list, exp_list, unprocessed_list))
+        # Only stores our sorted matrices if we designate a storage path.
         if sorted_exp_mat_path:
             with open(sorted_exp_mat_path, 'wb') as sorted_exp_mat_out:
                 pkl.dump(exp_mat_sort, sorted_exp_mat_out)
