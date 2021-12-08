@@ -112,9 +112,13 @@ def calculate_fold_changes(filt_mat: list, cell_data_dict: dict):
     first_gene = True
     # Will hold the fold changes of each gene in each cluster.
     fold_changes = {}
+    # Tracks progress, mostly for debugging.
+    log("Calculating fold changes...")
+    percent_done = 0
     for gene_id, gene_sparse_mat in enumerate(matrix_by_genes):
-        cells = gene_sparse_mat[0]
-        exprs = gene_sparse_mat[1]
+        # Fastest way to do this.
+        cells = [cell for cell, _ in gene_sparse_mat]
+        exprs = [exp for _, exp in gene_sparse_mat]
         # Makes a dictionary of each expressing cell keyed to its expression level.
         exp_dict = {}
         for cell, exp in zip(cells, exprs):
@@ -170,6 +174,9 @@ def calculate_fold_changes(filt_mat: list, cell_data_dict: dict):
             cluster_mean = cluster_sum / cluster_count
             fold_change = cluster_mean / bg_mean
             fold_changes[cluster][gene_id] = fold_change
+        if gene_id % 260 == 0:
+            percent_done += 1
+            log(f"{percent_done}% done.")
     return fold_changes
 
 
@@ -188,7 +195,7 @@ def main() -> None:
             cell_data_dict = pkl.load(cell_data_in)
         with open("intermediates/gene_data_dict.pkl", 'rb') as gene_data_in:
             gene_data_dict = pkl.load(gene_data_in)
-            genes_by_name = invert_hash(gene_data_dict, array_vals=True, identifier=0).inverse
+            # genes_by_name = invert_hash(gene_data_dict, array_vals=True, identifier=0).inverse
         log("Data Loaded.")
     expression_percentage_path = "intermediates/expression_percentages.pkl"
     if os.path.exists(expression_percentage_path):

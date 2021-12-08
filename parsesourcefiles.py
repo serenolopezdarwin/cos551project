@@ -9,12 +9,11 @@ import csv
 import numpy as np
 import os
 import pickle as pkl
-from time import perf_counter
 
 
+@log_time("Expression matrix generated")
 def generate_exp_matrix(exp_data_path: str, sparse_mat_path: str) -> list:
     """Given a sparse matrix text file, creates a list of lists corresponding to each entry (row, col, val)"""
-    start = perf_counter()
     with open(exp_data_path) as exp_data_in:
         # Skips header lines
         for _ in range(2):
@@ -27,16 +26,15 @@ def generate_exp_matrix(exp_data_path: str, sparse_mat_path: str) -> list:
                 sparse_mat[idx].append(int(split_exp_data[idx]))
     with open(sparse_mat_path, 'wb') as sparse_mat_out:
         pkl.dump(sparse_mat, sparse_mat_out)
-    log(f"Expression matrix generated in {str(perf_counter() - start)}")
     return sparse_mat
 
 
+@log_time("Cells processed")
 def process_cell_data(cell_annotation_path: str, exp_mat: list,
                       cell_data_path: str, filtered_mat_path: str) -> [dict, list]:
     """Reads a csv file of cell annotations and extracts various data fields for each cell. Also reads an input sparse
     expression matrix, sorts it by cell ids, and calculates each cell's aggregate expression level. Then flags cells for
     removal from the dataset based on their overall expression levels or doublet membership."""
-    start = perf_counter()
     chunked_exp_mat_path = "intermediates/exp_mat_chunk_cells.pkl"
     # Avoids chunking bottleneck, and lets us verify our sorting method more easily.
     if os.path.exists(chunked_exp_mat_path):
@@ -121,16 +119,15 @@ def process_cell_data(cell_annotation_path: str, exp_mat: list,
         pkl.dump(exp_mat_filtered, filtered_mat_out)
     with open(cell_data_path, 'wb') as cell_data_out:
         pkl.dump(cell_data_dict, cell_data_out)
-    log(f"Cells processed in {str(perf_counter() - start)}")
     return cell_data_dict, exp_mat_filtered
 
 
+@log_time("Genes processed")
 def generate_gene_dict(gene_annotation_path: str, filt_exp_mat: list,
                        gene_data_path: str, double_filt_mat_path: str) -> [dict, list]:
     """Given a file of gene annotations and an expression matrix with bad cells filtered out, stores relevant gene data
     in a pickled dictionary and calculates the variance across all good cells of reads in each gene, and picks the top
     2000 genes by variance, returning a matrix of just these genes (across good cells)."""
-    start = perf_counter()
     sort_exp_mat_path = "intermediates/exp_mat_sort_genes.pkl"
     gene_exp_levels, exp_by_genes = aggregate_expression_level("genes", filt_exp_mat, sort_exp_mat_path)
     gene_data_dict = {}
@@ -177,7 +174,6 @@ def generate_gene_dict(gene_annotation_path: str, filt_exp_mat: list,
                 exp_mat_filtered[2].append(exp)
     with open(double_filt_mat_path, 'wb') as filt_mat_out:
         pkl.dump(exp_mat_filtered, filt_mat_out)
-    log(f"Genes processed in {str(perf_counter() - start)}")
     return gene_data_dict, exp_mat_filtered
 
 
