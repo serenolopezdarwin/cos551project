@@ -34,6 +34,11 @@ the full dataset.
 Job submission script for use with SLURM. Should be modified
 based on user's cluster system.
 
+## job.sh
+
+Job to be submitted to SLURM. Should be modified based on 
+user's cluster system.
+
 ### differentialexpressionanalysis.py
 
 Plotting script that performs differential expression analysis on 
