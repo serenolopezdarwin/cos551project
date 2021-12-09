@@ -4,6 +4,7 @@ cell types and plots them in percentage-by-log-fold-change dot plots.
 """
 # Imports
 from cos551 import *
+from copy import deepcopy
 import numpy as np
 import os
 import pickle as pkl
@@ -54,12 +55,14 @@ def count_gene_percentages(filt_mat: list, cell_data_dict: dict, gene_ids: list)
     """Counts the percentage of cells each gene is expressed in, per-cluster. Returns a dict of each cell type (in
     order of our CELL_TYPES) and their corresponding expression percentage for each gene."""
     expression_counts = {}
+    total_counts = {}
     for cell_type in CELL_TYPES:
         # This will store the expressed and unexpressed counts for each of our genes. First entry is total count,
         # second is expressed count. Needs to be a dict to be unique in memory and a list to be mutable.
         expression_counts[cell_type] = {}
         for gene_id in gene_ids:
-            expression_counts[cell_type][gene_id] = [0, 0]
+            expression_counts[cell_type][gene_id] = 0
+        total_counts[cell_type] = 0
     filt_mat_chunk_cell_path = "intermediates/filt_mat_chunk_cell.pkl"
     if os.path.exists(filt_mat_chunk_cell_path):
         with open(filt_mat_chunk_cell_path, 'rb') as filt_mat_by_cells_in:
@@ -76,26 +79,29 @@ def count_gene_percentages(filt_mat: list, cell_data_dict: dict, gene_ids: list)
         # Skips cells with no cell type membership
         if cell_type == "NA":
             continue
+        # Tracks total number of cells in this cluster
+        total_counts[cell_type] += 1
         # Builds a list of the genes expressed in this cell and translates their indexes to our 1-1999 standard.
         expressed_genes = []
         for gene_id, _ in cell_sparse_mat:
             expressed_genes.append(gene_id)
+            expression_counts[cell_type][gene_id] += 1
         # expressed_gene_idxs = swap_gene_indexing(expressed_genes, gene_key)
-        for gene_id in gene_ids:
-            expression_counts[cell_type][gene_id][0] += 1
-            if gene_id in expressed_genes:
-                expression_counts[cell_type][gene_id][1] += 1
+        if cell_id % 20586 == 0:
+            percent = cell_id // 20586
+            print(f"{percent}% Done.")
     expression_percentages = {}
     for cell_type, expression_data in expression_counts.items():
         expression_percentages[cell_type] = {}
+        total_cells = total_counts[cell_type]
         for gene_id, gene_exp in expression_data.items():
-            expression_percentage = gene_exp[1] / gene_exp[0]
+            expression_percentage = gene_exp[1] / total_cells
             expression_percentages[cell_type][gene_id] = expression_percentage
     return expression_percentages
 
 
 @log_time("Expression levels calculated")
-def calculate_fold_changes(filt_mat: list, cell_data_dict: dict):
+def calculate_fold_changes(filt_mat: list, cell_data_dict: dict, gene_ids: list) -> dict:
     """Calculates the relative fold change from background of each gene in each cluster. Returns a dict keyed to
     clusters with subdicts keyed to genes, with values of the fold change of that gene in that cluster."""
     filt_mat_chunk_gene_path = "intermediates/filt_mat_chunk_gene.pkl"
@@ -111,6 +117,9 @@ def calculate_fold_changes(filt_mat: list, cell_data_dict: dict):
     good_cells = Bidict({})
     # Will hold the fold changes of each gene in each cluster.
     fold_changes = {}
+    # Initializes the clusters for our fold_changes dictionary.
+    for cell_type in CELL_TYPES:
+        fold_changes[cell_type] = {}
     for cell_id in cell_ids:
         # Catches and skips erroneous cells
         if cell_id not in cell_data_dict:
@@ -118,9 +127,6 @@ def calculate_fold_changes(filt_mat: list, cell_data_dict: dict):
         cell_data = cell_data_dict[cell_id]
         cell_doublet = cell_data[2]
         cell_cluster = cell_data[3]
-        # Initializes the clusters for our fold_changes dictionary.
-        if cell_cluster not in fold_changes:
-            fold_changes[cell_cluster] = {}
         # Skips badly annotated cells.
         if cell_doublet or cell_cluster == "NA":
             continue
@@ -179,7 +185,36 @@ def calculate_fold_changes(filt_mat: list, cell_data_dict: dict):
         if processed_genes % 20 == 0:
             percent_processed = processed_genes // 20
             print(f"{percent_processed}% done.")
+    # Normalizes all fold-changes to be positive.
+    for gene_id in gene_ids:
+        min_fc = min([fold_changes[cell_type][gene_id] for cell_type in CELL_TYPES])
+        for cell_type in CELL_TYPES:
+            entry = fold_changes[cell_type][gene_id]
+            fold_changes[cell_type][gene_id] -= min_fc
     return fold_changes
+
+
+def max_fold_change_array(exp_perc: dict, fold_changes: dict, gene_ids: list):
+    """"""
+    # Holds the genes with greatest fold-change for each cluster.
+    max_fc = {}
+    for cell_type in CELL_TYPES:
+        max_fc[cell_type] = (0, 0)
+    for gene_id in gene_ids:
+        fold_change_list = [fold_changes[cell_type][gene_id] for cell_type in CELL_TYPES]
+        top_two = sorted(fold_change_list)[-2:]
+        max_entry = top_two[1]
+        second_entry = top_two[0]
+        enrichment = max_entry / second_entry
+        # Finds cluster with highest fold change and adds the gene id and two entries to that place in max_fc
+        for cell_type in CELL_TYPES:
+            if fold_changes[cell_type][gene_id] == max_entry:
+                if enrichment > max_fc[cell_type][1]:
+                    max_fc[cell_type] = (gene_id, enrichment)
+
+    for cell_type in CELL_TYPES:
+        rep_gene = max_fc[cell_type][0]
+        fold_change_list = [fold_changes[cell_type][rep_gene] for cell_type in CELL_TYPES]
 
 
 def main() -> None:
@@ -199,12 +234,12 @@ def main() -> None:
             gene_data_dict = pkl.load(gene_data_in)
             # genes_by_name = invert_hash(gene_data_dict, array_vals=True, identifier=0).inverse
         log("Data Loaded.")
+        gene_ids = list(set(filt_mat[0]))
     expression_percentage_path = "intermediates/expression_percentages.pkl"
     if os.path.exists(expression_percentage_path):
         with open(expression_percentage_path, 'rb') as exp_perc_in:
             expression_percentages = pkl.load(exp_perc_in)
     else:
-        gene_ids = list(set(filt_mat[0]))
         expression_percentages = count_gene_percentages(filt_mat, cell_data_dict, gene_ids)
         with open(expression_percentage_path, 'wb') as exp_perc_out:
             pkl.dump(expression_percentages, exp_perc_out)
@@ -213,7 +248,7 @@ def main() -> None:
         with open(fold_change_path, 'rb') as fc_in:
             fold_changes = pkl.load(fc_in)
     else:
-        fold_changes = calculate_fold_changes(filt_mat, cell_data_dict)
+        fold_changes = calculate_fold_changes(filt_mat, cell_data_dict, gene_ids)
         with open(fold_change_path, 'wb') as fc_out:
             pkl.dump(fold_changes, fc_out)
 
