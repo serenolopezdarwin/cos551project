@@ -71,6 +71,8 @@ def count_gene_percentages(filt_mat: list, cell_data_dict: dict, gene_ids: list)
         _, matrix_by_cells = aggregate_expression_level("cells", filt_mat)
         with open(filt_mat_chunk_cell_path, 'wb') as filt_mat_by_cells_out:
             pkl.dump(matrix_by_cells, filt_mat_by_cells_out)
+    # Just for timing introspection of loop.
+    print("Calculating gene expression percentages...")
     for cell_id, cell_sparse_mat in enumerate(matrix_by_cells):
         # Skips empty cells
         if cell_id not in cell_data_dict or not cell_sparse_mat:
@@ -95,7 +97,7 @@ def count_gene_percentages(filt_mat: list, cell_data_dict: dict, gene_ids: list)
         expression_percentages[cell_type] = {}
         total_cells = total_counts[cell_type]
         for gene_id, gene_exp in expression_data.items():
-            expression_percentage = gene_exp[1] / total_cells
+            expression_percentage = gene_exp / total_cells
             expression_percentages[cell_type][gene_id] = expression_percentage
     return expression_percentages
 
@@ -212,13 +214,20 @@ def max_fold_change_array(exp_perc: dict, fold_changes: dict, gene_ids: list):
                 if enrichment > max_fc[cell_type][1]:
                     max_fc[cell_type] = (gene_id, enrichment)
 
-    for cell_type in CELL_TYPES:
-        rep_gene = max_fc[cell_type][0]
-        fold_change_list = [fold_changes[cell_type][rep_gene] for cell_type in CELL_TYPES]
+    rep_genes = [max_fc[cell_type][0] for cell_type in CELL_TYPES]
+    for gene_id in rep_genes:
+        fc_list = []
+        ep_list = []
+        for cell_type in CELL_TYPES:
+            fc_list.append(fold_changes[cell_type][gene_id])
+            ep_list.append(exp_perc[cell_type][gene_id])
 
 
 def main() -> None:
     """Manager function.Details of each called function are in the corresponding docstrings."""
+    # Using python two breaks our division, so this makes sure we're on the right version.
+    if sys.version_info[0] < 3:
+        raise VersionError("Must be using Python 3. Please update to Python 3 before running this script.")
     double_filt_mat_path = "intermediates/double_filt_exp_mat.pkl"
     if not os.path.exists(double_filt_mat_path):
         exit("Filtered matrix not found. Run parsesourcefiles.py to generate.")
@@ -234,7 +243,7 @@ def main() -> None:
             gene_data_dict = pkl.load(gene_data_in)
             # genes_by_name = invert_hash(gene_data_dict, array_vals=True, identifier=0).inverse
         log("Data Loaded.")
-        gene_ids = list(set(filt_mat[0]))
+    gene_ids = list(set(filt_mat[0]))
     expression_percentage_path = "intermediates/expression_percentages.pkl"
     if os.path.exists(expression_percentage_path):
         with open(expression_percentage_path, 'rb') as exp_perc_in:

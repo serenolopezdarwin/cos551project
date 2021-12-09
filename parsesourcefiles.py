@@ -9,6 +9,7 @@ import csv
 import numpy as np
 import os
 import pickle as pkl
+SOURCE_PATH = "/Genomics/grid/users/sl1936/classes/cos551"
 
 
 @log_time("Expression matrix generated")
@@ -47,6 +48,7 @@ def process_cell_data(cell_annotation_path: str, exp_mat: list,
     else:
         sort_exp_mat_path = "intermediates/exp_mat_sort_cells.pkl"
         cell_exp_levels, exp_by_cells = aggregate_expression_level("cells", exp_mat, sort_exp_mat_path)
+        os.remove(sort_exp_mat_path)
         with open(chunked_exp_mat_path, 'wb') as chunked_exp_mat_out:
             pkl.dump(exp_by_cells, chunked_exp_mat_out)
     cell_data_dict = {}
@@ -119,6 +121,8 @@ def process_cell_data(cell_annotation_path: str, exp_mat: list,
         pkl.dump(exp_mat_filtered, filtered_mat_out)
     with open(cell_data_path, 'wb') as cell_data_out:
         pkl.dump(cell_data_dict, cell_data_out)
+    # We only need the chunked matrix if we don't have the filtered matrix.
+    os.remove(chunked_exp_mat_path)
     return cell_data_dict, exp_mat_filtered
 
 
@@ -174,6 +178,8 @@ def generate_gene_dict(gene_annotation_path: str, filt_exp_mat: list,
                 exp_mat_filtered[2].append(exp)
     with open(double_filt_mat_path, 'wb') as filt_mat_out:
         pkl.dump(exp_mat_filtered, filt_mat_out)
+    # We only need the sorted matrix to generate the filtered matrix.
+    os.remove(sort_exp_mat_path)
     return gene_data_dict, exp_mat_filtered
 
 
@@ -187,21 +193,20 @@ def main() -> None:
         if not os.path.isdir(directory):
             os.mkdir(directory)
     source_files = ["gene_count.txt", "cell_annotate.csv", "gene_annotate.csv"]
-    source_paths = [f"sourcefiles/{file}" for file in source_files]
+    source_paths = [f"{SOURCE_PATH}/sourcefiles/{file}" for file in source_files]
     # Checks that we have all of the necessary sourcefiles in the right relative paths.
     for source_path in source_paths:
         if not os.path.exists(source_path):
             exit(f"Sourcefile {source_path} missing. Please provide the appropriate file.")
     cell_data_path = "intermediates/cell_data_dict.pkl"
     cell_filt_mat_path = "intermediates/cell_filt_exp_mat.pkl"
+    sparse_mat_path = "intermediates/sparse_mat.pkl"
     if os.path.exists(cell_data_path) and os.path.exists(cell_filt_mat_path):
         with open(cell_data_path, 'rb') as cell_data_in:
             cell_data_dict = pkl.load(cell_data_in)
         with open(cell_filt_mat_path, 'rb') as filtered_mat_in:
             cell_filt_exp_mat = pkl.load(filtered_mat_in)
     else:
-        # We only need the original sparse matrix if we don't have the cell filtered matrix.
-        sparse_mat_path = "intermediates/sparse_mat.pkl"
         if os.path.exists(sparse_mat_path):
             with open(sparse_mat_path, 'rb') as sparse_mat_in:
                 exp_matrix = pkl.load(sparse_mat_in)
@@ -209,6 +214,8 @@ def main() -> None:
             exp_matrix = generate_exp_matrix(source_paths[0], sparse_mat_path)
         cell_data_dict, cell_filt_exp_mat = process_cell_data(source_paths[1], exp_matrix, cell_data_path,
                                                               cell_filt_mat_path)
+    # We only need the original sparse matrix if we don't have the cell filtered matrix.
+    os.remove(sparse_mat_path)
     gene_data_path = "intermediates/gene_data_dict.pkl"
     double_filt_mat_path = "intermediates/double_filt_exp_mat.pkl"
     if os.path.exists(gene_data_path):
@@ -221,6 +228,8 @@ def main() -> None:
                                                              double_filt_mat_path)
     # Checks to see if our script executed successfully
     if cell_data_dict and gene_data_dict and double_filt_mat:
+        # We only need the cell-filtered matrix if we don't have the double-filtered matrix.
+        os.remove(cell_filt_mat_path)
         print("All Done!")
 
 

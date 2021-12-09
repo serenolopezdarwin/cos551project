@@ -115,6 +115,11 @@ class Bidict(dict):
         super(Bidict, self).__delitem__(key)
 
 
+class VersionError(Exception):
+    """Raised when we encounter an error based on wrong software versions."""
+    pass
+
+
 def invert_hash(in_dict: dict, array_vals=False, identifier=0) -> Bidict:
     """Converts a dictionary to a bidict. If the dictionary's values are arrays, will use the identifier argument to
     use that field of the dictionary as the values in the bidict."""
