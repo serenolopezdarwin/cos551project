@@ -4,7 +4,6 @@ cell types and plots them in percentage-by-log-fold-change dot plots.
 """
 # Imports
 from cos551 import *
-from copy import deepcopy
 import numpy as np
 import os
 import pickle as pkl
@@ -119,9 +118,14 @@ def calculate_fold_changes(filt_mat: list, cell_data_dict: dict, gene_ids: list)
     good_cells = Bidict({})
     # Will hold the fold changes of each gene in each cluster.
     fold_changes = {}
+    # Will hold the mean expression level of each cluster
+    cluster_expression = {}
+    cluster_mean_exp = {}
     # Initializes the clusters for our fold_changes dictionary.
     for cell_type in CELL_TYPES:
         fold_changes[cell_type] = {}
+        cluster_expression[cell_type] = [0, 0]
+        cluster_mean_exp[cell_type] = 0
     for cell_id in cell_ids:
         # Catches and skips erroneous cells
         if cell_id not in cell_data_dict:
@@ -133,6 +137,16 @@ def calculate_fold_changes(filt_mat: list, cell_data_dict: dict, gene_ids: list)
         if cell_doublet or cell_cluster == "NA":
             continue
         good_cells[cell_id] = cell_cluster
+        cell_exp = cell_data[0]
+        cluster_expression[cell_cluster][0] += cell_exp
+        cluster_expression[cell_cluster][1] += 1
+    # Calculates mean expression level of cells in each cluster
+    for cell_type, exp_data in cluster_expression:
+        cluster_mean_exp[cell_type] = exp_data[0] / exp_data[1]
+    # Normalizes all expression levels by the highest expression level.
+    max_exp = max([exp for exp in cluster_mean_exp.values()])
+    for cell_type, exp in cluster_mean_exp:
+        cluster_mean_exp[cell_type] = exp / max_exp
     # Overall cell count for background calculations.
     norm_count = len(good_cells.keys())
     # Tracks progress, mostly for debugging.
@@ -158,12 +172,13 @@ def calculate_fold_changes(filt_mat: list, cell_data_dict: dict, gene_ids: list)
         for cell, cluster in good_cells.items():
             if cluster not in cluster_exp:
                 cluster_exp[cluster] = []
-            # Adds pseudocount of 0.01.
             if cell not in exp_dict:
                 exp = 0
             else:
                 exp = exp_dict[cell]
-            cluster_exp[cluster].append(exp + 0.01)
+            # Adds pseudocount of 0.01
+            adjusted_exp = exp + 0.01
+            cluster_exp[cluster].append(adjusted_exp)
             total_exp.append(exp)
         exp_mean = np.mean(total_exp)
         exp_stdev = np.std(total_exp)
@@ -181,9 +196,12 @@ def calculate_fold_changes(filt_mat: list, cell_data_dict: dict, gene_ids: list)
             bg_count = norm_count - cluster_count
             bg_mean = bg_sum / bg_count
             cluster_mean = cluster_sum / cluster_count
+            # Normalizes by average expression level of each cluster.
+            cluster_exp = cluster_mean_exp[cluster]
             # We can get negatives so we want the absolute difference between these two.
-            enrichment = cluster_mean - bg_mean
+            enrichment = (cluster_mean - bg_mean) / cluster_exp
             fold_changes[cluster][gene_id] = enrichment
+        print(processed_genes)
         if processed_genes % 20 == 0:
             percent_processed = processed_genes // 20
             print(f"{percent_processed}% done.")
@@ -191,12 +209,11 @@ def calculate_fold_changes(filt_mat: list, cell_data_dict: dict, gene_ids: list)
     for gene_id in gene_ids:
         min_fc = min([fold_changes[cell_type][gene_id] for cell_type in CELL_TYPES])
         for cell_type in CELL_TYPES:
-            entry = fold_changes[cell_type][gene_id]
             fold_changes[cell_type][gene_id] -= min_fc
     return fold_changes
 
 
-def max_fold_change_array(exp_perc: dict, fold_changes: dict, gene_ids: list):
+def max_fold_change_array(exp_perc: dict, fold_changes: dict, gene_ids: list, gene_data_dict: dict):
     """"""
     # Holds the genes with greatest fold-change for each cluster.
     max_fc = {}
@@ -213,14 +230,19 @@ def max_fold_change_array(exp_perc: dict, fold_changes: dict, gene_ids: list):
             if fold_changes[cell_type][gene_id] == max_entry:
                 if enrichment > max_fc[cell_type][1]:
                     max_fc[cell_type] = (gene_id, enrichment)
-
-    rep_genes = [max_fc[cell_type][0] for cell_type in CELL_TYPES]
-    for gene_id in rep_genes:
+    # Makes a dataframe with columns of each representative gene and rows of each cell type.
+    fc_dict = {}
+    ep_dict = {}
+    for cell_type in CELL_TYPES:
+        rep_gene = max_fc[cell_type][0]
+        gene_name = gene_data_dict[rep_gene][0]
         fc_list = []
         ep_list = []
-        for cell_type in CELL_TYPES:
-            fc_list.append(fold_changes[cell_type][gene_id])
-            ep_list.append(exp_perc[cell_type][gene_id])
+        for ct in CELL_TYPES:
+            fc_list.append(fold_changes[ct][rep_gene])
+            ep_list.append(exp_perc[ct][rep_gene])
+        fc_dict[gene_name] = fc_list
+        ep_dict[gene_name] = ep_list
 
 
 def main() -> None:
