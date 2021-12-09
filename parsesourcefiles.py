@@ -135,6 +135,7 @@ def generate_gene_dict(gene_annotation_path: str, filt_exp_mat: list,
     sort_exp_mat_path = "intermediates/exp_mat_sort_genes.pkl"
     gene_exp_levels, exp_by_genes = aggregate_expression_level("genes", filt_exp_mat, sort_exp_mat_path)
     gene_data_dict = {}
+    cell_count = len(set(filt_exp_mat[1]))
     with open(gene_annotation_path, 'rt') as gene_annotations_in:
         gene_reader = csv.reader(gene_annotations_in)
         # Skips header
@@ -154,8 +155,11 @@ def generate_gene_dict(gene_annotation_path: str, filt_exp_mat: list,
         # Skips genes with no data.
         if not gene_data:
             continue
-        # Variance of expression levels across expressing cells for this gene.
-        gene_variance = np.var([entry[1] for entry in gene_data])
+        # Adds a pseudocount of 0.01 to every cell.
+        miss_cells = [0.01] * (cell_count - len(gene_data))
+        real_cells = [entry[1] + 0.01 for entry in gene_data]
+        # Variance of expression levels for this gene.
+        gene_variance = np.var(miss_cells + real_cells)
         variance_list.append(gene_variance)
     # Anything with variance more than or equal to this value is analyzed as one of the top 2000 most variant genes.
     variance_cutoff = sorted(variance_list)[-2000]
@@ -186,6 +190,9 @@ def generate_gene_dict(gene_annotation_path: str, filt_exp_mat: list,
 def main() -> None:
     """Manager function. Checks if a variety of files exist, and if they don't, generates them. Details of each called
     function are in the corresponding docstrings."""
+    # Python2 breaks our division functions.
+    if sys.version_info[0] < 3:
+        raise VersionError("Must be using Python 3. Please update to Python 3 before running this script.")
     # Creates any missing data directories for us.
     log("Log initialized...")
     data_directories = ["sourcefiles", "intermediates"]

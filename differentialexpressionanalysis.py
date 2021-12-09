@@ -160,10 +160,10 @@ def calculate_fold_changes(filt_mat: list, cell_data_dict: dict, gene_ids: list)
                 cluster_exp[cluster] = []
             # Adds pseudocount of 0.01.
             if cell not in exp_dict:
-                exp = 0.01
+                exp = 0
             else:
                 exp = exp_dict[cell]
-            cluster_exp[cluster].append(exp)
+            cluster_exp[cluster].append(exp + 0.01)
             total_exp.append(exp)
         exp_mean = np.mean(total_exp)
         exp_stdev = np.std(total_exp)
