@@ -7,6 +7,7 @@ from cos551 import *
 import numpy as np
 import matplotlib as mpl
 matplotlib.use('Agg')
+import matplotlib.colors as col
 import matplotlib.pyplot as plt
 import os
 import pandas as pd
@@ -23,6 +24,11 @@ CELL_TYPES = ["Connective tissue progenitors", "Chondrocytes and osteoblasts", "
               "Primitive erythroid lineage", "Inhibitory interneurons", "Granule neurons", "Hepatocytes",
               "Notochord and floor plate cells", "White blood cells", "Ependymal cells", "Cholinergic neurons",
               "Cardiac muscle lineage", "Megakaryocytes", "Melanocytes", "Lens", "Neutrophils"]
+# Tells us which genes aren't in our dot plot due to filtration
+TEST_GENES = ["Col6a6", "Glis1", "Nr1h5", "Col9a1", "Ntng1", "Trp63", "Pth2r", "Fndc3c1", "Mybl1", "Tfap2d",
+              "C130060K24Rik", "Dmbx1", "Mylk4", "Foxb1", "Npy", "Rab5a", "Il31ra", "Pax2", "Id4", "Emcn", "Lamc3",
+              "Tspan8", "Mpz", "Ppp1r1c", "Cpa2", "Hbb-bh1", "Dlx6", "Eomes", "A1cf", "Metrnl", "Ms4a4a", "Gmnc",
+              "Uts2b", "Myh6", "Gp1ba", "Tyr", "Cryba2", "Lcn2"]
 
 
 def build_gene_bidict(gene_ids: list) -> Bidict:
@@ -217,8 +223,10 @@ def calculate_fold_changes(filt_mat: list, cell_data_dict: dict, gene_ids: list)
     return fold_changes
 
 
-def generate_dot_plot(exp_perc: dict, fold_changes: dict, gene_ids: list, gene_data_dict: dict):
-    """"""
+def generate_dot_plot(exp_perc: dict, fold_changes: dict, gene_ids: list, gene_data_dict: dict) -> list:
+    """Based on our calculated fold changes and expression percentages, generates a dot plot of each cluster's most
+    differentially expressed gene, sized by its expression percentage and colored by its adjusted expression level
+    across all clusters. Returns a list of all marker genes we identify."""
     # Creates a path for our figures.
     if not os.path.exists("figures/"):
         os.mkdir("figures/")
@@ -278,19 +286,95 @@ def generate_dot_plot(exp_perc: dict, fold_changes: dict, gene_ids: list, gene_d
     mpl.rcParams['figure.figsize'] = 10, 10
     # Colors by fold change, sizes by expression percentage.
     dot_plot = sns.scatterplot(data=point_frame, x="gene_idx", y="cluster_idx", size="Expression Percentage",
-                               hue="Scaled Expression", sizes=(20, 400))
+                               hue="Scaled Expression", sizes=(1, 400), edgecolor="none")
     dot_plot.set(xlabel=None, ylabel=None)
     # Ensures we label every cluster and gene.
     seq_along = [n for n in range(0, len(CELL_TYPES))]
     plt.xticks(seq_along, gene_names, rotation=90)
     plt.yticks(seq_along, CELL_TYPES[::-1])
+    # Puts the legend below the plot and adjusts margins to show it.
     plt.legend(bbox_to_anchor=(0.45, -.4), loc='lower center', borderaxespad=0., ncol=2)
     fig = dot_plot.get_figure()
     fig.savefig("figures/dot_plot.png", bbox_inches='tight')
     plt.close()
+    return gene_names
 
 
-def 
+def merge_colormaps(cm_names: list, num_colors: int) -> mpl.colors.ListedColormap:
+    """Given any number of matplotlib colormaps, merges them and returns a colormap with num_colors entries from each of
+    the input colormaps, from first to last. Iterates over the colormaps at once rather than sequentially."""
+    colors = []
+    cm_count = len(cm_names)
+    # Makes a list of each colorant's color list.
+    cms = [[c for c in plt.get_cmap(cm_name).colors] for cm_name in cm_names]
+    i = 0
+    while i < num_colors:
+        cm_idx = i % cm_count
+        try:
+            color = cms[cm_idx][i // cm_count]
+            colors.append(color)
+            i += 1
+        # If we run out of one colormap, simply move onto the next and extend the loop by one iteration.
+        except IndexError:
+            i += 1
+            num_colors += 1
+            pass
+    colormap = col.ListedColormap(colors)
+    return colormap
+
+
+# TODO: Number clusters if you have time.
+def generate_tsne_plot(cell_data_dict: dict):
+    """Given a dictionary of cell cluster and tsne data, plots the cells in tsne space and colors by cluster."""
+    # Makes a new qualitative colormap with colors for each of our cell types.
+    tsne_colors = merge_colormaps(['Set1', 'Pastel1', 'Dark2', 'Set2', 'Pastel2'], len(CELL_TYPES)).colors
+    tsne_1 = []
+    tsne_2 = []
+    cluster_labels = []
+    for cell_data in cell_data_dict.values():
+        cell_doublet = cell_data[2]
+        cell_cluster = cell_data[3]
+        # Skips bad cells
+        if cell_doublet or cell_cluster not in CELL_TYPES:
+            continue
+        cell_tsne = cell_data[1]
+        tsne_1.append(cell_tsne[0])
+        tsne_2.append(cell_tsne[1])
+        cluster_labels.append(cell_cluster)
+    point_frame = pd.DataFrame(data={"tsne1": tsne_1, "tsne2": tsne_2, "Cluster": cluster_labels})
+    # Sets plot size
+    mpl.rcParams['figure.figsize'] = 10, 10
+    # Colors by cluster membership and sets static small size. Takes forever to plot.
+    tsne_plot = sns.scatterplot(data=point_frame, x="tsne1", y="tsne2", size=1, hue=cluster_labels, palette=tsne_colors,
+                                edgecolor="none")
+    fig = tsne_plot.get_figure()
+    # Removes the "size" category from the legend.
+    handles, labels = tsne_plot.get_legend_handles_labels()
+    #  Puts the legend to the right of the plot and adjusts margins to show it. Also removes last entry (size).
+    plt.legend(handles[:-1], labels[:-1], bbox_to_anchor=(1.4, 1), loc='upper right', borderaxespad=0.)
+    # We don't need axes on a TSNE plot.
+    plt.axis('off')
+    fig.savefig("figures/tsne_plot.png", bbox_inches='tight')
+    plt.close()
+
+
+def compare_markers(markers: list, gene_ids: list, genes_by_name: dict):
+    """Given a list of identified marker genes, compares them to the originally identified markers and tries to figure
+    out why they escaped our classification."""
+    re_genes = 0
+    skipped_genes = 0
+    filtered_genes = 0
+    for idx, gene_name in enumerate(TEST_GENES):
+        cluster = CELL_TYPES[idx]
+        if gene_name in markers:
+            print(f"{gene_name} Re-identified for {cluster}.")
+            re_genes += 1
+        elif gene_name in gene_ids:
+            print(f"{gene_name} not identified for {cluster}")
+            skipped_genes += 1
+        else:
+            print(f"{gene_name} filtered out for {cluster}")
+            filtered_genes += 1
 
 
 def main() -> None:
@@ -311,7 +395,7 @@ def main() -> None:
             cell_data_dict = pkl.load(cell_data_in)
         with open("intermediates/gene_data_dict.pkl", 'rb') as gene_data_in:
             gene_data_dict = pkl.load(gene_data_in)
-            # genes_by_name = invert_hash(gene_data_dict, array_vals=True, identifier=0).inverse
+            genes_by_name = invert_hash(gene_data_dict, array_vals=True, identifier=0).inverse
         log("Data Loaded.")
     gene_ids = list(set(filt_mat[0]))
     expression_percentage_path = "intermediates/expression_percentages.pkl"
@@ -330,6 +414,10 @@ def main() -> None:
         fold_changes = calculate_fold_changes(filt_mat, cell_data_dict, gene_ids)
         with open(fold_change_path, 'wb') as fc_out:
             pkl.dump(fold_changes, fc_out)
+    # This script always makes plots.
+    gene_names = generate_dot_plot(expression_percentages, fold_changes, gene_ids, gene_data_dict)
+    generate_tsne_plot(cell_data_dict)
+    compare_markers(gene_names, gene_ids, genes_by_name)
 
 
 if __name__ == "__main__":
