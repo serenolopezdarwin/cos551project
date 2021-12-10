@@ -70,6 +70,7 @@ def process_cell_data(cell_annotation_path: str, exp_mat: list,
             # Iterate first because cells are 1-indexed
             row_num += 1
             exp_level = cell_exp_levels[row_num]
+            age = cell_row[8]
             tsne = [float(cell_row[idx]) if cell_row[idx] != "NA" else "NA" for idx in [13, 14]]
             # Weirdly, casting these strings to bools doesn't work. So we just do a manual check...lol
             if cell_row[19] == "TRUE":
@@ -86,7 +87,7 @@ def process_cell_data(cell_annotation_path: str, exp_mat: list,
                 pass
             traj = cell_row[23]
             umap = [float(cell_row[idx]) if cell_row[idx] != "NA" else "NA" for idx in [24, 25, 26]]
-            cell_data_dict[row_num] = [exp_level, tsne, doublet, cluster, traj, umap]
+            cell_data_dict[row_num] = [exp_level, tsne, doublet, cluster, traj, umap, age]
     # Don't count first entry, as it is an empty initialization entry due to our cells being 1-indexed
     exp_mean = np.mean(cell_exp_levels[1:])
     exp_stdev = np.std(cell_exp_levels[1:])

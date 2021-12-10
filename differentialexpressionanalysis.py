@@ -331,9 +331,11 @@ def generate_tsne_plot(cell_data_dict: dict):
     tsne_1 = []
     tsne_2 = []
     cluster_labels = []
+    cell_ages = []
     for cell_data in cell_data_dict.values():
         cell_doublet = cell_data[2]
         cell_cluster = cell_data[3]
+        cell_age = cell_data[6]
         # Skips bad cells
         if cell_doublet or cell_cluster not in CELL_TYPES:
             continue
@@ -341,7 +343,8 @@ def generate_tsne_plot(cell_data_dict: dict):
         tsne_1.append(cell_tsne[0])
         tsne_2.append(cell_tsne[1])
         cluster_labels.append(cell_cluster)
-    point_frame = pd.DataFrame(data={"tsne1": tsne_1, "tsne2": tsne_2, "Cluster": cluster_labels})
+        cell_ages.append(cell_age)
+    point_frame = pd.DataFrame(data={"tsne1": tsne_1, "tsne2": tsne_2, "Cluster": cluster_labels, "Age": cell_ages})
     # Sets plot size
     mpl.rcParams['figure.figsize'] = 10, 10
     # Colors by cluster membership and sets static small size. Takes forever to plot.
@@ -355,6 +358,17 @@ def generate_tsne_plot(cell_data_dict: dict):
     # We don't need axes on a TSNE plot.
     plt.axis('off')
     fig.savefig("figures/tsne_plot.png", bbox_inches='tight')
+    plt.close()
+    # By-age tSNE plots. Take forever to plot.
+    sns.set(font_scale=5)
+    tsne_age_plots = sns.FacetGrid(data=point_frame, col="Age", hue="Cluster", palette=tsne_colors,
+                                   col_order=['9.5', '10.5', '11.5', '12.5', '13.5'], height=15)
+    # Removes the axis from every subplot
+    for _, ax in tsne_age_plots.axes_dict.items():
+        ax.axis('off')
+    # Re-orders the plots in numerical age order.
+    tsne_age_plots.map(sns.scatterplot, "tsne1", "tsne2", edgecolor="none", size=1)
+    tsne_age_plots.figure.savefig("figures/tsne_age_plot.png")
     plt.close()
 
 

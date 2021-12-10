@@ -29,7 +29,7 @@ away from the mean expression level across all cells.
 - Genes that are not members of the 2000 most variant genes across 
 the full dataset.
 
-## job.sh
+### job.sh
 
 Job to be submitted to SLURM. Should be modified based on 
 user's cluster system.
