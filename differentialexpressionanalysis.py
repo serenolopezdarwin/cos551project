@@ -145,7 +145,7 @@ def calculate_fold_changes(filt_mat: list, cell_data_dict: dict, gene_ids: list)
         cluster_mean_exp[cell_type] = exp_data[0] / exp_data[1]
     # Normalizes all expression levels by the highest expression level.
     max_exp = max([exp for exp in cluster_mean_exp.values()])
-    for cell_type, exp in cluster_mean_exp:
+    for cell_type, exp in cluster_mean_exp.items():
         cluster_mean_exp[cell_type] = exp / max_exp
     # Overall cell count for background calculations.
     norm_count = len(good_cells.keys())
