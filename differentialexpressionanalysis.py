@@ -141,7 +141,7 @@ def calculate_fold_changes(filt_mat: list, cell_data_dict: dict, gene_ids: list)
         cluster_expression[cell_cluster][0] += cell_exp
         cluster_expression[cell_cluster][1] += 1
     # Calculates mean expression level of cells in each cluster
-    for cell_type, exp_data in cluster_expression:
+    for cell_type, exp_data in cluster_expression.items():
         cluster_mean_exp[cell_type] = exp_data[0] / exp_data[1]
     # Normalizes all expression levels by the highest expression level.
     max_exp = max([exp for exp in cluster_mean_exp.values()])
