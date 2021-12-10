@@ -71,7 +71,7 @@ def count_gene_percentages(filt_mat: list, cell_data_dict: dict, gene_ids: list)
         with open(filt_mat_chunk_cell_path, 'wb') as filt_mat_by_cells_out:
             pkl.dump(matrix_by_cells, filt_mat_by_cells_out)
     # Just for timing introspection of loop.
-    print("Calculating gene expression percentages...")
+    log("Calculating gene expression percentages...")
     for cell_id, cell_sparse_mat in enumerate(matrix_by_cells):
         # Skips empty cells
         if cell_id not in cell_data_dict or not cell_sparse_mat:
@@ -90,7 +90,7 @@ def count_gene_percentages(filt_mat: list, cell_data_dict: dict, gene_ids: list)
         # expressed_gene_idxs = swap_gene_indexing(expressed_genes, gene_key)
         if cell_id % 20586 == 0:
             percent = cell_id // 20586
-            print(f"{percent}% Done.")
+            log(f"{percent}% Done.")
     expression_percentages = {}
     for cell_type, expression_data in expression_counts.items():
         expression_percentages[cell_type] = {}
@@ -150,7 +150,7 @@ def calculate_fold_changes(filt_mat: list, cell_data_dict: dict, gene_ids: list)
     # Overall cell count for background calculations.
     norm_count = len(good_cells.keys())
     # Tracks progress, mostly for debugging.
-    print("Calculating fold changes...")
+    log("Calculating fold changes...")
     processed_genes = 0
     for gene_id, gene_sparse_mat in enumerate(matrix_by_genes):
         # Skips empty genes.
@@ -201,10 +201,9 @@ def calculate_fold_changes(filt_mat: list, cell_data_dict: dict, gene_ids: list)
             # We can get negatives so we want the absolute difference between these two.
             enrichment = (cluster_mean - bg_mean) / cluster_exp
             fold_changes[cluster][gene_id] = enrichment
-        print(processed_genes)
         if processed_genes % 20 == 0:
             percent_processed = processed_genes // 20
-            print(f"{percent_processed}% done.")
+            log(f"{percent_processed}% done.")
     # Normalizes all fold-changes to be positive.
     for gene_id in gene_ids:
         min_fc = min([fold_changes[cell_type][gene_id] for cell_type in CELL_TYPES])
