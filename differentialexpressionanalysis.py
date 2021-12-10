@@ -233,7 +233,7 @@ def generate_dot_plot(exp_perc: dict, fold_changes: dict, gene_ids: list, gene_d
     # Holds the genes with greatest fold-change for each cluster.
     max_fc = {}
     for cell_type in CELL_TYPES:
-        max_fc[cell_type] = (0, 0)
+        max_fc[cell_type] = (0, 0, 0)
     for gene_id in gene_ids:
         fold_change_list = [fold_changes[cell_type][gene_id] for cell_type in CELL_TYPES]
         top_two = sorted(fold_change_list)[-2:]
@@ -243,8 +243,8 @@ def generate_dot_plot(exp_perc: dict, fold_changes: dict, gene_ids: list, gene_d
         # Finds cluster with highest fold change and adds the gene id and two entries to that place in max_fc
         for cell_type in CELL_TYPES:
             if fold_changes[cell_type][gene_id] == max_entry:
-                if enrichment > max_fc[cell_type][1]:
-                    max_fc[cell_type] = (gene_id, enrichment)
+                if enrichment > max_fc[cell_type][1] and max_entry > max_fc[cell_type][2]:
+                    max_fc[cell_type] = (gene_id, enrichment, max_entry)
     # Makes a dataframe with columns of each representative gene and rows of each cell type.
     fc_dict = {}
     for cell_type in CELL_TYPES:
@@ -365,16 +365,21 @@ def compare_markers(markers: list, gene_ids: list, genes_by_name: dict):
     skipped_genes = 0
     filtered_genes = 0
     for idx, gene_name in enumerate(TEST_GENES):
+        gene_id = genes_by_name[gene_name][0]
         cluster = CELL_TYPES[idx]
+        marker = markers[idx]
         if gene_name in markers:
-            print(f"{gene_name} Re-identified for {cluster}.")
+            log(f"{gene_name} re-identified for {cluster}.")
             re_genes += 1
-        elif gene_name in gene_ids:
-            print(f"{gene_name} not identified for {cluster}")
+        elif gene_id in gene_ids:
+            log(f"{gene_name} not identified for {cluster}. Instead: {marker}")
             skipped_genes += 1
         else:
-            print(f"{gene_name} filtered out for {cluster}")
+            log(f"{gene_name} filtered out for {cluster}. Instead: {marker}")
             filtered_genes += 1
+    log(f"{str(re_genes)} genes re-identified.")
+    log(f"{str(skipped_genes)} genes included but skipped.")
+    log(f"{str(filtered_genes)} genes filtered out.")
 
 
 def main() -> None:
