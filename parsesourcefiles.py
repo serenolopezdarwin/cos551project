@@ -135,7 +135,7 @@ def generate_gene_dict(gene_annotation_path: str, filt_exp_mat: list,
     sort_exp_mat_path = "intermediates/exp_mat_sort_genes.pkl"
     gene_exp_levels, exp_by_genes = aggregate_expression_level("genes", filt_exp_mat, sort_exp_mat_path)
     gene_data_dict = {}
-    cell_count = len(set(filt_exp_mat[1]))
+    # cell_count = len(set(filt_exp_mat[1]))
     with open(gene_annotation_path, 'rt') as gene_annotations_in:
         gene_reader = csv.reader(gene_annotations_in)
         # Skips header
@@ -156,10 +156,12 @@ def generate_gene_dict(gene_annotation_path: str, filt_exp_mat: list,
         if not gene_data:
             continue
         # Adds a pseudocount of 0.01 to every cell.
-        miss_cells = [0.01] * (cell_count - len(gene_data))
-        real_cells = [entry[1] + 0.01 for entry in gene_data]
+        # miss_cells = [0.01] * (cell_count - len(gene_data))
+        # real_cells = [entry[1] + 0.01 for entry in gene_data]
         # Variance of expression levels for this gene.
-        gene_variance = np.var(miss_cells + real_cells)
+        # gene_variance = np.var(miss_cells + real_cells)
+        # Adding pseudocount here apparently wasn't the problem, I've left the blocks here in case I decide to again.
+        gene_variance = np.var([entry[1] for entry in gene_data])
         variance_list.append(gene_variance)
     # Anything with variance more than or equal to this value is analyzed as one of the top 2000 most variant genes.
     variance_cutoff = sorted(variance_list)[-2000]

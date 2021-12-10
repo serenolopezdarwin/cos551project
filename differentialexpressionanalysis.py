@@ -5,8 +5,13 @@ cell types and plots them in percentage-by-log-fold-change dot plots.
 # Imports
 from cos551 import *
 import numpy as np
+import matplotlib as mpl
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 import os
+import pandas as pd
 import pickle as pkl
+import seaborn as sns
 # Globals
 CELL_TYPES = ["Connective tissue progenitors", "Chondrocytes and osteoblasts", "Intermediate mesoderm",
               "Jaw and tooth progenitors", "Excitatory neurons", "Epithelial cells", "Radial glia",
@@ -212,8 +217,11 @@ def calculate_fold_changes(filt_mat: list, cell_data_dict: dict, gene_ids: list)
     return fold_changes
 
 
-def max_fold_change_array(exp_perc: dict, fold_changes: dict, gene_ids: list, gene_data_dict: dict):
+def generate_dot_plot(exp_perc: dict, fold_changes: dict, gene_ids: list, gene_data_dict: dict):
     """"""
+    # Creates a path for our figures.
+    if not os.path.exists("figures/"):
+        os.mkdir("figures/")
     # Holds the genes with greatest fold-change for each cluster.
     max_fc = {}
     for cell_type in CELL_TYPES:
@@ -231,17 +239,58 @@ def max_fold_change_array(exp_perc: dict, fold_changes: dict, gene_ids: list, ge
                     max_fc[cell_type] = (gene_id, enrichment)
     # Makes a dataframe with columns of each representative gene and rows of each cell type.
     fc_dict = {}
-    ep_dict = {}
     for cell_type in CELL_TYPES:
         rep_gene = max_fc[cell_type][0]
-        gene_name = gene_data_dict[rep_gene][0]
         fc_list = []
         ep_list = []
         for ct in CELL_TYPES:
-            fc_list.append(fold_changes[ct][rep_gene])
-            ep_list.append(exp_perc[ct][rep_gene])
-        fc_dict[gene_name] = fc_list
-        ep_dict[gene_name] = ep_list
+            ep = exp_perc[ct][rep_gene]
+            fc = fold_changes[ct][rep_gene]
+            fc_list.append(fc * ep)
+            ep_list.append(ep)
+        min_fc = min([fc for fc in fc_list if fc])
+        # Pseudocount of .1 to separate zero-values from very low values.
+        adjusted_fc = [np.log10((fc / min_fc + .1)) + 1 for fc in fc_list]
+        # Converts our two lists into a list of tuples.
+        gene_data = [(fc, ep) for fc, ep in zip(adjusted_fc, ep_list)]
+        fc_dict[cell_type] = gene_data
+    # Gets the cluster name (and corresponding idx), gene name (and corresponding idx), fold change and exp perc.
+    gene_idxs = []
+    cluster_idxs = []
+    full_fc = []
+    full_ep = []
+    gene_names = []
+    for gene_idx, cell_type in enumerate(CELL_TYPES):
+        gene_data = fc_dict[cell_type]
+        rep_gene = max_fc[cell_type][0]
+        gene_name = gene_data_dict[rep_gene][0]
+        gene_names.append(gene_name)
+        # We appended to these lists in the order of CELL_TYPES so they can be our indices.
+        for idx, (fc, ep) in enumerate(gene_data):
+            gene_idxs.append(gene_idx)
+            # Flip the indices because we want to label clusters from top to bottom.
+            cluster_idxs.append(37 - idx)
+            full_fc.append(fc)
+            full_ep.append(ep)
+    point_frame = pd.DataFrame(data={"gene_idx": gene_idxs, "cluster_idx": cluster_idxs, "Scaled Expression": full_fc,
+                                     "Expression Percentage": full_ep})
+    # Sets plot size.
+    mpl.rcParams['figure.figsize'] = 10, 10
+    # Colors by fold change, sizes by expression percentage.
+    dot_plot = sns.scatterplot(data=point_frame, x="gene_idx", y="cluster_idx", size="Expression Percentage",
+                               hue="Scaled Expression", sizes=(20, 400))
+    dot_plot.set(xlabel=None, ylabel=None)
+    # Ensures we label every cluster and gene.
+    seq_along = [n for n in range(0, len(CELL_TYPES))]
+    plt.xticks(seq_along, gene_names, rotation=90)
+    plt.yticks(seq_along, CELL_TYPES[::-1])
+    plt.legend(bbox_to_anchor=(0.45, -.4), loc='lower center', borderaxespad=0., ncol=2)
+    fig = dot_plot.get_figure()
+    fig.savefig("figures/dot_plot.png", bbox_inches='tight')
+    plt.close()
+
+
+def 
 
 
 def main() -> None:
