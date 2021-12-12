@@ -9,6 +9,7 @@ import matplotlib as mpl
 matplotlib.use('Agg')
 import matplotlib.colors as col
 import matplotlib.pyplot as plt
+import matplotlib.lines as lns
 # noinspection PyUnresolvedReferences
 from mpl_toolkits import mplot3d
 import os
@@ -28,7 +29,7 @@ CELL_TYPES = ["Connective tissue progenitors", "Chondrocytes and osteoblasts", "
               "Cardiac muscle lineage", "Megakaryocytes", "Melanocytes", "Lens", "Neutrophils"]
 TRAJECTORIES = ["Endothelial trajectory", "Mesenchymal trajectory", "Neural tube and notochord trajectory",
                 "Neural crest (melanocyte) trajectory 1", "Haematopoiesis trajectory", "Epithelial trajectory",
-                "Epithelial trajectory", "Hepatocyte trajectory", "Neural crest (PNS glia) trajectory 2"
+                "Epithelial trajectory", "Hepatocyte trajectory", "Neural crest (PNS glia) trajectory 2",
                 "Neural crest (PNS neuron) trajectory 3", "Lens trajectory"]
 # Marker genes originally identified in Cao et al 2019.
 TEST_GENES = ["Col6a6", "Glis1", "Nr1h5", "Col9a1", "Ntng1", "Trp63", "Pth2r", "Fndc3c1", "Mybl1", "Tfap2d",
@@ -329,7 +330,6 @@ def merge_colormaps(cm_names: list, num_colors: int) -> mpl.colors.ListedColorma
     return colormap
 
 
-# TODO: Number clusters if you have time.
 def generate_tsne_plot(cell_data_dict: dict):
     """Given a dictionary of cell cluster and tsne data, plots the cells in tsne space and colors by cluster."""
     # Makes a new qualitative colormap with colors for each of our cell types.
@@ -352,15 +352,23 @@ def generate_tsne_plot(cell_data_dict: dict):
         cell_ages.append(cell_age)
     point_frame = pd.DataFrame(data={"tsne1": tsne_1, "tsne2": tsne_2, "Cluster": cluster_labels, "Age": cell_ages})
     # Sets plot size
-    mpl.rcParams['figure.figsize'] = 10, 10
+    sns.set(rc={'figure.figsize': (20, 20)})
     # Colors by cluster membership and sets static small size. Takes forever to plot.
     tsne_plot = sns.scatterplot(data=point_frame, x="tsne1", y="tsne2", size=1, hue=cluster_labels, palette=tsne_colors,
                                 edgecolor="none")
     fig = tsne_plot.get_figure()
     # Removes the "size" category from the legend.
     handles, labels = tsne_plot.get_legend_handles_labels()
+    new_handles = [0] * len(CELL_TYPES)
+    new_labels = [0] * len(CELL_TYPES)
+    for handle, cluster in zip(handles[:-1], labels[:-1]):
+        cluster_idx = CELL_TYPES.index(cluster)
+        new_handles[cluster_idx] = handle
+        # This is a PyCharm bug, there is no instance where cluster_idx will be a string here.
+        # noinspection PyTypeChecker
+        new_labels[cluster_idx] = f"{str(cluster_idx + 1)} - {cluster}"
     #  Puts the legend to the right of the plot and adjusts margins to show it. Also removes last entry (size).
-    plt.legend(handles[:-1], labels[:-1], bbox_to_anchor=(1.4, 1), loc='upper right', borderaxespad=0.)
+    plt.legend(new_handles, new_labels, bbox_to_anchor=(1.4, 1), loc='upper right', borderaxespad=0, prop={'size': 20})
     # We don't need axes on a TSNE plot.
     plt.axis('off')
     fig.savefig("figures/tsne_plot.png", bbox_inches='tight')
@@ -378,23 +386,60 @@ def generate_tsne_plot(cell_data_dict: dict):
     plt.close()
 
 
+def export_legend(legend, filename="legend.png", exp1=-5, exp2=-5, exp3=5, exp4=5):
+    """Given a matplotlib legend object, exports an image of the legend alone to the designated filename.
+    NOT MY CODE: from https://stackoverflow.com/questions/4534480/get-legend-as-a-separate-picture-in-matplotlib"""
+    expand = [exp1, exp2, exp3, exp4]
+    fig = legend.figure
+    fig.canvas.draw()
+    bbox = legend.get_window_extent()
+    bbox = bbox.from_extents(*(bbox.extents + np.array(expand)))
+    bbox = bbox.transformed(fig.dpi_scale_trans.inverted())
+    fig.savefig(filename, dpi="figure", bbox_inches=bbox)
+    plt.close()
+
+
 def generate_umap_plot(cell_data_dict: dict):
     """"""
 
-    traj = []
+    trajectories = []
     umap = [[], [], []]
     for cell_data in cell_data_dict.values():
         traj = cell_data[4]
-        if traj not in TRAJECTORIES:
+        # Optimized skipping of invalid trajectories.
+        try:
+            traj_idx = TRAJECTORIES.index(traj)
+        except ValueError:
             continue
         # Adds umap coordinates to our umap lists.
         for idx in range(3):
             coord = cell_data[5][idx]
             umap[idx].append(coord)
+        trajectories.append(traj_idx)
 
-    fig = plt.figure()
-    ax = plt.axes(projection='3d')
-    ax.scatter3D(xdata, ydata, zdata, c=zdata, cmap='Greens')
+    for i in range(0, 180, 20):
+        for j in range(0, 360, 45):
+            fig = plt.figure(figsize=(100, 100))
+            ax = plt.axes(projection='3d')
+            ax.scatter(umap[0], umap[1], umap[2], c=trajectories, cmap='Set1')
+            ax.view_init(i, j)
+            # Coordinates once again don't really matter here.
+            ax.set_facecolor('white')
+            ax.axis('off')
+            fig.savefig(f"figures/umap_test/umap_{str(i)}_{str(j)}.png", bbox_inches='tight')
+            plt.close()
+            print(f"Elev: {i} / 180, Azi: {j} / 360")
+    # Makes and plots a legend that identifies our UMAP clusters.
+    handle_colors = plt.get_cmap("Set1").colors[0:len(TRAJECTORIES)]
+    handles = []
+    labels = []
+    for idx, color in enumerate(handle_colors):
+        handle = lns.Line2D([0], [0], marker='o', color='w', label='Circle',
+                            markerfacecolor=color, markersize=10)
+        handles.append(handle)
+        labels.append(f"{str(idx + 1)} - {TRAJECTORIES[idx]}")
+    legend = plt.legend(handles, labels, loc=3, framealpha=1, frameon=True)
+    export_legend(legend, "figures/umap_legend.png")
 
 
 def compare_markers(markers: list, gene_ids: list, genes_by_name: dict):
