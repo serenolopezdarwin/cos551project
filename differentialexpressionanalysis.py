@@ -9,6 +9,8 @@ import matplotlib as mpl
 matplotlib.use('Agg')
 import matplotlib.colors as col
 import matplotlib.pyplot as plt
+# noinspection PyUnresolvedReferences
+from mpl_toolkits import mplot3d
 import os
 import pandas as pd
 import pickle as pkl
@@ -24,7 +26,11 @@ CELL_TYPES = ["Connective tissue progenitors", "Chondrocytes and osteoblasts", "
               "Primitive erythroid lineage", "Inhibitory interneurons", "Granule neurons", "Hepatocytes",
               "Notochord and floor plate cells", "White blood cells", "Ependymal cells", "Cholinergic neurons",
               "Cardiac muscle lineage", "Megakaryocytes", "Melanocytes", "Lens", "Neutrophils"]
-# Tells us which genes aren't in our dot plot due to filtration
+TRAJECTORIES = ["Endothelial trajectory", "Mesenchymal trajectory", "Neural tube and notochord trajectory",
+                "Neural crest (melanocyte) trajectory 1", "Haematopoiesis trajectory", "Epithelial trajectory",
+                "Epithelial trajectory", "Hepatocyte trajectory", "Neural crest (PNS glia) trajectory 2"
+                "Neural crest (PNS neuron) trajectory 3", "Lens trajectory"]
+# Marker genes originally identified in Cao et al 2019.
 TEST_GENES = ["Col6a6", "Glis1", "Nr1h5", "Col9a1", "Ntng1", "Trp63", "Pth2r", "Fndc3c1", "Mybl1", "Tfap2d",
               "C130060K24Rik", "Dmbx1", "Mylk4", "Foxb1", "Npy", "Rab5a", "Il31ra", "Pax2", "Id4", "Emcn", "Lamc3",
               "Tspan8", "Mpz", "Ppp1r1c", "Cpa2", "Hbb-bh1", "Dlx6", "Eomes", "A1cf", "Metrnl", "Ms4a4a", "Gmnc",
@@ -370,6 +376,25 @@ def generate_tsne_plot(cell_data_dict: dict):
     tsne_age_plots.map(sns.scatterplot, "tsne1", "tsne2", edgecolor="none", size=1)
     tsne_age_plots.figure.savefig("figures/tsne_age_plot.png")
     plt.close()
+
+
+def generate_umap_plot(cell_data_dict: dict):
+    """"""
+
+    traj = []
+    umap = [[], [], []]
+    for cell_data in cell_data_dict.values():
+        traj = cell_data[4]
+        if traj not in TRAJECTORIES:
+            continue
+        # Adds umap coordinates to our umap lists.
+        for idx in range(3):
+            coord = cell_data[5][idx]
+            umap[idx].append(coord)
+
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
+    ax.scatter3D(xdata, ydata, zdata, c=zdata, cmap='Greens')
 
 
 def compare_markers(markers: list, gene_ids: list, genes_by_name: dict):

@@ -57,10 +57,14 @@ def process_cell_data(cell_annotation_path: str, exp_mat: list,
                         "Cardiac muscle lineages", "Neural Tube", "Definitive erythroid lineage",
                         "Premature oligodendrocyte", "Oligodendrocyte Progenitors", "Intermediate Mesoderm",
                         "Ependymal cell", "Notochord cells"]
+    annotation_traj = ["Neural crest 1", "Neural crest 2", "Neural crest 3"]
+    # Correct annotations for those types.
     plot_types = ["Chondrocyte progenitors", "Schwann cell precursors", "Chondrocytes and osteoblasts",
                   "Cardiac muscle lineage", "Dorsal neural tube cells", "Definitive erythrocyte lineage",
                   "Premature oligodendrocytes", "Oligodendrocyte progenitors", "Intermediate mesoderm",
                   "Ependymal cells", "Notochord and floor plate cells"]
+    plot_traj = ["Neural crest (melanocyte) trajectory 1", "Neural crest (PNS glia) trajectory 2",
+                 "Neural crest (PNS neuron) trajectory 3"]
     with open(cell_annotation_path, 'rt') as cell_annotations_in:
         cell_reader = csv.reader(cell_annotations_in)
         # Skips header
@@ -77,15 +81,20 @@ def process_cell_data(cell_annotation_path: str, exp_mat: list,
                 doublet = True
             else:
                 doublet = False
-            cluster = cell_row[22]
             # Checks if the cell type is one of the incorrectly annotated types from the annotations and replaces it
-            # with the appropriate type labeled in the final plot.
+            # with the appropriate type labeled in the final plot. Does the same for trajectories.
+            cluster = cell_row[22]
             try:
                 type_idx = annotation_types.index(cluster)
                 cluster = plot_types[type_idx]
             except ValueError:
                 pass
             traj = cell_row[23]
+            try:
+                traj_idx = annotation_traj.index(traj)
+                traj = plot_traj[traj_idx]
+            except ValueError:
+                pass
             umap = [float(cell_row[idx]) if cell_row[idx] != "NA" else "NA" for idx in [24, 25, 26]]
             cell_data_dict[row_num] = [exp_level, tsne, doublet, cluster, traj, umap, age]
     # Don't count first entry, as it is an empty initialization entry due to our cells being 1-indexed
