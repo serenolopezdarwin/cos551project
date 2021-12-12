@@ -29,7 +29,7 @@ CELL_TYPES = ["Connective tissue progenitors", "Chondrocytes and osteoblasts", "
               "Cardiac muscle lineage", "Megakaryocytes", "Melanocytes", "Lens", "Neutrophils"]
 TRAJECTORIES = ["Endothelial trajectory", "Mesenchymal trajectory", "Neural tube and notochord trajectory",
                 "Neural crest (melanocyte) trajectory 1", "Haematopoiesis trajectory", "Epithelial trajectory",
-                "Epithelial trajectory", "Hepatocyte trajectory", "Neural crest (PNS glia) trajectory 2",
+                "Hepatocyte trajectory", "Neural crest (PNS glia) trajectory 2",
                 "Neural crest (PNS neuron) trajectory 3", "Lens trajectory"]
 # Marker genes originally identified in Cao et al 2019.
 TEST_GENES = ["Col6a6", "Glis1", "Nr1h5", "Col9a1", "Ntng1", "Trp63", "Pth2r", "Fndc3c1", "Mybl1", "Tfap2d",
@@ -368,7 +368,8 @@ def generate_tsne_plot(cell_data_dict: dict):
         # noinspection PyTypeChecker
         new_labels[cluster_idx] = f"{str(cluster_idx + 1)} - {cluster}"
     #  Puts the legend to the right of the plot and adjusts margins to show it. Also removes last entry (size).
-    plt.legend(new_handles, new_labels, bbox_to_anchor=(1.4, 1), loc='upper right', borderaxespad=0, prop={'size': 20})
+    plt.legend(new_handles, new_labels, bbox_to_anchor=(1.4, 1), loc='upper right', borderaxespad=0, prop={'size': 20},
+               facecolor='white', framealpha=1)
     # We don't need axes on a TSNE plot.
     plt.axis('off')
     fig.savefig("figures/tsne_plot.png", bbox_inches='tight')
@@ -390,6 +391,8 @@ def export_legend(legend, filename="legend.png", exp1=-5, exp2=-5, exp3=5, exp4=
     """Given a matplotlib legend object, exports an image of the legend alone to the designated filename.
     NOT MY CODE: from https://stackoverflow.com/questions/4534480/get-legend-as-a-separate-picture-in-matplotlib"""
     expand = [exp1, exp2, exp3, exp4]
+    frame = legend.get_frame()
+    frame.set_facecolor('white')
     fig = legend.figure
     fig.canvas.draw()
     bbox = legend.get_window_extent()
@@ -400,8 +403,8 @@ def export_legend(legend, filename="legend.png", exp1=-5, exp2=-5, exp3=5, exp4=
 
 
 def generate_umap_plot(cell_data_dict: dict):
-    """"""
-
+    """Uses the UMAP coordinates and trajectory annotations in our cell data dict to plot 3d scatterplots of UMAP
+    coordinates, with each point colored by their annotated trajectory."""
     trajectories = []
     umap = [[], [], []]
     for cell_data in cell_data_dict.values():
@@ -416,21 +419,20 @@ def generate_umap_plot(cell_data_dict: dict):
             coord = cell_data[5][idx]
             umap[idx].append(coord)
         trajectories.append(traj_idx)
-
-    for i in range(0, 180, 20):
-        for j in range(0, 360, 45):
-            fig = plt.figure(figsize=(100, 100))
-            ax = plt.axes(projection='3d')
-            ax.scatter(umap[0], umap[1], umap[2], c=trajectories, cmap='Set1')
-            ax.view_init(i, j)
-            # Coordinates once again don't really matter here.
-            ax.set_facecolor('white')
-            ax.axis('off')
-            fig.savefig(f"figures/umap_test/umap_{str(i)}_{str(j)}.png", bbox_inches='tight')
-            plt.close()
-            print(f"Elev: {i} / 180, Azi: {j} / 360")
+    # 3d scatter plot of UMAP, colored by trajectory.
+    umap_colors = merge_colormaps(['Pastel1', 'Dark2'], len(TRAJECTORIES))
+    fig = plt.figure(figsize=(100, 100))
+    ax = plt.axes(projection='3d')
+    ax.scatter(umap[0], umap[1], umap[2], c=trajectories, cmap=umap_colors)
+    # Chosen after painful trial-by-error
+    ax.view_init(55, 320)
+    # Coordinates once again don't really matter here.
+    ax.set_facecolor('white')
+    ax.axis('off')
+    fig.savefig(f"figures/umap_plot.png", bbox_inches='tight')
+    plt.close()
     # Makes and plots a legend that identifies our UMAP clusters.
-    handle_colors = plt.get_cmap("Set1").colors[0:len(TRAJECTORIES)]
+    handle_colors = umap_colors.colors
     handles = []
     labels = []
     for idx, color in enumerate(handle_colors):
