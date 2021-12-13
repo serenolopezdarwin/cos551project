@@ -5,6 +5,15 @@ November 2021
 
 Recreates analysis originally performed by Cao et al., 2019[^1].
 
+This pipeline requires source data from Cao et al., [made available
+here by the authors](https://oncoscape.v3.sttrcancer.org/atlas.gs.washington.edu.mouse.rna/downloads)
+
+Our scripts require the following libraries: numpy, pandas, 
+matplotlib, seaborn.
+
+Parsesourcefiles.py is intended to be run first to prepare data for
+differentialexpressionalaysis.py.
+
 ### cos551.py
 
 Module file that contains object classes and shared functions for my 
