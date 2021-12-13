@@ -440,7 +440,7 @@ def generate_umap_plot(cell_data_dict: dict):
                             markerfacecolor=color, markersize=10)
         handles.append(handle)
         labels.append(f"{str(idx + 1)} - {TRAJECTORIES[idx]}")
-    legend = plt.legend(handles, labels, loc=3, framealpha=1, frameon=True)
+    legend = plt.legend(handles, labels, loc=3, framealpha=1, frameon=True, prop={'size': 15})
     export_legend(legend, "figures/umap_legend.png")
 
 
